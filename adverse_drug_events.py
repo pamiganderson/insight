@@ -9,18 +9,74 @@ Created on Sun Sep  9 21:41:24 2018
 # Import needed libraries
 import pandas as pd
 import time
-import urllib.request, json
 
-from functions_adverse_drug_events import extract_drug_auth_num_from_ad_ev
+from functions_adverse_drug_events import merge_ad_ev_tables, merge_2_me_tables
+from functions_medicare_drug_costs import (read_spending_csv, format_str_and_numerics,
+                                           create_ad_df_by_brand, merge_spending_df_and_ad_df,
+                                           classify_generic_risk)
+from functions_ml_models import compare_classifiers, random_forest_model
+
+# Find data frame of adverse events in 2014
+df_merge_1 = merge_ad_ev_tables(df_ad_data_q1, df_ad_data_q2)
+df_merge_2 = merge_ad_ev_tables(df_ad_data_q3, df_ad_data_q4)
+df_ad_merge_2014 = merge_2_me_tables(df_merge_1 , df_merge_2)
+
+# Clean adverse events table
+clean_ad_ev_table(df_ad_merge_2014)
+
+df_ad_merge_brand_2014 = create_ad_df_by_brand(df_ad_merge_2014)
 
 
 
+# Find 2014 medicare spending by brand name
+path = '/Users/pamelaanderson/Documents/Insight/spending/'
+file_name = 'medicare_part_d_drug_spending.csv'
+year = '2014'
+df_spending_2014 = read_spending_csv(path, file_name, year)
+df_spending_2014 = format_str_and_numerics(df_spending_2014)
+df_merge_ad_spending = merge_spending_df_and_ad_df(df_spending_2014,
+                                                   df_ad_merge_brand_2014)
+
+# Find which drugs have >2 manufacturers
+df_spending_2014_2manuf = pd.pivot_table(df_spending_2014, index = 'brand_name',
+                                         values = 'manufacturer',
+                                         aggfunc = 'count')
+df_spending_2014_2manuf = df_spending_2014_2manuf[df_spending_2014_2manuf['manufacturer'] > 1]
+
+# Merge spending by brand and adverse events
+df_spending_adv_2manf = df_merge_ad_spending.merge(df_spending_2014_2manuf,
+                                                   left_on = 'brand_name',
+                                                   right_index=True,
+                                                   how = 'inner')
+
+df_spending_adv_2manf_nan = df_spending_adv_2manf.dropna()
+
+# Classify generic vs. brand
+df_merge_2014_class = classify_generic_risk(df_merge_2014)
+
+# Create Model
+compare_classifiers(df_class_generic[['sum_tot_bene',
+                                         'sum_tot_claim',
+                                         'sum_tot_dosage',
+                                         'sum_tot_spend']], df_class_generic[['classify_risk']])
+
+# Random Forest Model
+random_forest_model()
+
+# Important features
 
 
-# Load adverse event data
+# Chi sq test - contingency tables
+from scipy.stats import chi2_contingency
+obs = np.array([[60, 293329], [65, 65]])
+chi2, p, dof, expected = chi2_contingency(obs)
+
 years = ['2014'] # make string list of years to include adverse data for
 path = '/Users/pamelaanderson/Documents/Insight/fda_drug_recall/'
-df_adverse_ev = load_adverse_events(path, years)
+q_list = ['Q1', 'Q2', 'Q3', 'Q4']
+i = 3
+q = q_list[i]
+df_adverse_ev = load_adverse_events(path, years, q_list[i])
 
 col_names = list(df_adverse_ev.columns.values)
 ad_examples = df_adverse_ev.iloc[0]
@@ -33,10 +89,7 @@ print("Time to load one year = ", end-start)
 patient_ex = df_adverse_ev_data.iloc[0]['patient']
 
 # Recall data 
-recall_data = json.load(open(path + "drug-enforcement-0001-of-0001.json"))
-recall_data_results = recall_data['results']
-df_recall_data_results = pd.DataFrame(recall_data_results)
-df_recall_data_results['report_date'] = pd.to_datetime(df_recall_data_results['report_date'])
+
 
 # If recall appplication number occurs within adverse app number
 

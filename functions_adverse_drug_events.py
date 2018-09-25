@@ -12,20 +12,20 @@ import os
 import json
 import operator
 
-def load_adverse_events(path, years):
-    for year in years:
-        path_w_year = path + year + '/'
-        json_files = os.listdir(path_w_year)
-        df_adverse_ev = pd.DataFrame()
-        file_tot = [file for file in json_files if file not in ['.DS_Store']]
-        ind = 0
-        for file in file_tot:
-            #adverse_ev_data = json.load(open(path_w_year + file))
-            df_adverse_ev_json = pd.read_json(path_w_year + file, lines=True, chunksize=10000)
-            #df_adverse_ev_json = pd.DataFrame(adverse_ev_data['results'])
-            df_adverse_ev = pd.concat([df_adverse_ev, df_adverse_ev_json])
-            del adverse_ev_data, df_adverse_ev_json
-            ind += 1
+def load_adverse_events(path, year, q):
+    path_w_year = path + year + '/' + q + '/'
+    json_files = os.listdir(path_w_year)
+    df_adverse_ev = pd.DataFrame()
+    file_tot = [file for file in json_files if file not in ['.DS_Store']]
+    ind = 0
+    for file in file_tot:
+        print(file)
+        adverse_ev_data = json.load(open(path_w_year + file))
+        #df_adverse_ev_json = pd.read_json(path_w_year + file, lines=True, chunksize=10000)
+        df_adverse_ev_json = pd.DataFrame(adverse_ev_data['results'])
+        df_adverse_ev = pd.concat([df_adverse_ev, df_adverse_ev_json])
+        del adverse_ev_data, df_adverse_ev_json
+        ind += 1
     df_adverse_ev = df_adverse_ev.reset_index(drop=True)
     df_adverse_ev = format_kept_cells(df_adverse_ev)
     df_adverse_ev = extract_drug_app_num_from_ad_ev(df_adverse_ev)
@@ -173,7 +173,7 @@ def extract_drug_app_num_from_ad_ev(df_adverse_ev):
                               'drug_generic_name' : drug_generic_name,
                               'drug_manuf_name' : drug_manuf_name})
     df_adverse_ev = pd.concat([df_adverse_ev, drug_info], axis=1)
-    return drug_info
+    return df_adverse_ev
 
 def extract_drug_app_num_from_recall(df_recall_w_openfda):
     drug_app_num = []
@@ -188,22 +188,77 @@ def extract_drug_app_num_from_recall(df_recall_w_openfda):
 def create_ad_ev_pivot_on_drug_num(df_adverse_ev):
     df_ad_ev_drug_num = pd.pivot_table(df_adverse_ev, index = ['drug_generic_name',
                                                                'drug_brand_name',
-                                                               'drug_manuf_name',
-                                                               'drug_app_num']) 
+                                                               'drug_manuf_name']) 
     df_ad_ev_drug_num = df_ad_ev_drug_num.reset_index()
+    return df_ad_ev_drug_num
+
+def merge_ad_ev_tables(df_ad_data_q1, df_ad_data_q2):
+    cols_drop_indiv = ['seriousnesscongenitalanomali_count',
+                 'seriousnessdeath_count',
+                 'seriousnessdisabling_count',
+                 'seriousnesshospitalization_count',
+                 'seriousnesslifethreatening_count',
+                 'seriousnessother_count',
+                 'age_count']
+    cols_drop = ['serious_count_x',
+                 'serious_count_y',
+                 'drug_generic_name_x',
+                 'drug_generic_name_y',
+                 'drug_manuf_name_x',
+                 'drug_manuf_name_y']
+    df_ad_data_q1 = df_ad_data_q1.drop(cols_drop_indiv, axis=1)
+    df_ad_data_q2 = df_ad_data_q2.drop(cols_drop_indiv, axis=1)
+    df_ad_data_merge = df_ad_data_q1.merge(df_ad_data_q2, on = 'drug_brand_name',
+                                           how = 'outer')
+    df_ad_data_merge = df_ad_data_merge.fillna(0)
+    df_ad_data_merge['serious_count'] = (df_ad_data_merge['serious_count_x'] +
+                                            df_ad_data_merge['serious_count_y'])
+    drug_gen_list = []
+    drug_manuf_list = []
+    for i in range(0, len(df_ad_data_merge)):
+        if df_ad_data_merge.iloc[i]['drug_generic_name_x'] == 0:
+            drug_gen_list.append(df_ad_data_merge.iloc[i]['drug_generic_name_y'])
+            drug_manuf_list.append(df_ad_data_merge.iloc[i]['drug_manuf_name_y'])
+        else:
+            drug_gen_list.append(df_ad_data_merge.iloc[i]['drug_generic_name_x'])
+            drug_manuf_list.append(df_ad_data_merge.iloc[i]['drug_manuf_name_x'])
+    df_ad_data_merge['drug_generic_name'] = pd.Series(drug_gen_list)
+    df_ad_data_merge['drug_manuf_name'] = pd.Series(drug_manuf_list)
+    df_ad_data_merge = df_ad_data_merge.drop(cols_drop, axis=1)
+    return df_ad_data_merge
+
+def merge_2_me_tables(df_ad_data_merge_1, df_ad_data_merge_2):
+    cols_drop = ['serious_count_x',
+                 'serious_count_y',
+                 'drug_generic_name_x',
+                 'drug_generic_name_y',
+                 'drug_manuf_name_x',
+                 'drug_manuf_name_y']
+    df_ad_data_merge =df_ad_data_merge_1.merge(df_ad_data_merge_2, on = 'drug_brand_name',
+                                               how = 'outer')
+    df_ad_data_merge = df_ad_data_merge.fillna(0)
+    df_ad_data_merge['serious_count'] = (df_ad_data_merge['serious_count_x'] +
+                                        df_ad_data_merge['serious_count_y'])
+    drug_gen_list = []
+    drug_manuf_list = []
+    for i in range(0, len(df_ad_data_merge)):
+        if df_ad_data_merge.iloc[i]['drug_generic_name_x'] == 0:
+            drug_gen_list.append(df_ad_data_merge.iloc[i]['drug_generic_name_y'])
+            drug_manuf_list.append(df_ad_data_merge.iloc[i]['drug_manuf_name_y'])
+        else:
+            drug_gen_list.append(df_ad_data_merge.iloc[i]['drug_generic_name_x'])
+            drug_manuf_list.append(df_ad_data_merge.iloc[i]['drug_manuf_name_x'])
+ 
+    df_ad_data_merge['drug_generic_name'] = pd.Series(drug_gen_list)
+    df_ad_data_merge['drug_manuf_name'] = pd.Series(drug_manuf_list)
+    df_ad_data_merge = df_ad_data_merge.drop(cols_drop, axis=1)
+    return df_ad_data_merge
+
+def classify_ad_event_recall(df_ad_ev_drug_num, df_recall):
+    df_ad_ev_drug_num = df_ad_ev_drug_num.fillna('MISSING')
     df_ad_ev_drug_num['drug_generic_name'] = df_ad_ev_drug_num['drug_generic_name'].str.lower()
     df_ad_ev_drug_num['drug_brand_name'] = df_ad_ev_drug_num['drug_brand_name'].str.lower()
     df_ad_ev_drug_num['drug_manuf_name'] = df_ad_ev_drug_num['drug_manuf_name'].str.lower()
-    df_ad_ev_drug_num['drug_app_num'] = df_ad_ev_drug_num['drug_app_num'].str.lower()
-    return df_ad_ev_drug_num
-
-
-
-
-
-df_recall = df_recall_data_results
-
-def classify_ad_event_recall(df_ad_ev_drug_num, df_recall):
     recall_sim_manuf_list = []
     recall_bool_list = []
     recall_class_list = []
@@ -225,7 +280,7 @@ def classify_ad_event_recall(df_ad_ev_drug_num, df_recall):
                 recall_bool_list.append(1)
                 recall_class_list.append(df_recall_sub.iloc[max_ind]['classification'])
                 recall_reason_list.append(df_recall_sub.iloc[max_ind]['reason_for_recall'])
-                recall_report_date_list.append(df_recall_sub.iloc[max_ind]['report_date'])
+                recall_report_date_list.append(df_recall_sub.iloc[max_ind]['recall_initiation_date'])
             else:
                 recall_bool_list.append(0)
                 recall_class_list.append(np.nan)
@@ -244,4 +299,8 @@ def classify_ad_event_recall(df_ad_ev_drug_num, df_recall):
                                    'recall_report_date' : recall_report_date_list})
     df_ad_ev_drug_num = pd.concat([df_ad_ev_drug_num, df_recall_info], axis=1)
     
+
+    
+def save_raw_data(df_adverse_ev):
+    df_adverse_ev.to_pickle("/Users/pamelaanderson/Documents/Insight/fda_drug_recall/dataframes/df_adverse_ev_2014_q1.pkl")
     
