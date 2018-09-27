@@ -15,13 +15,16 @@ from functions_adverse_drug_events import merge_ad_ev_tables, merge_2_me_tables
 from functions_medicare_drug_costs import (read_spending_csv, format_str_and_numerics,
                                            create_ad_df_by_brand, merge_spending_df_tot_and_ad_df,
                                            classify_generic_risk, feature_and_generic_label,
-                                           find_num_manuf_and_change, find_spending_change)
+                                           find_num_manuf_and_change, find_spending_change,
+                                           merge_spending_diff)
 from functions_ml_models import compare_classifiers, random_forest_model
 from functions_data_cleaning import clean_ad_ev_table
+from functions_drug_features import find_num_act_ingredients, find_nti_drugs
 from create_database import query_db_adverse_events
 
 # Find data frame of adverse events in 2014
 df_ad = query_db_adverse_events()
+df_ad['serious_count'] = 10*df_ad['serious_count']
 
 # Clean adverse events table
 df_ad_clean = clean_ad_ev_table(df_ad)
@@ -56,32 +59,66 @@ df_spending_tot = merge_spending_diff(df_spending_2013, df_spending_difference)
 df_merge_ad_spending = merge_spending_df_tot_and_ad_df(df_spending_tot,
                                                        df_ad_brand)
 
+
+
 df_features_generic_class = feature_and_generic_label(df_merge_ad_spending)
 
 # Classify generic vs. brand
 df_merge_class = classify_generic_risk(df_features_generic_class)
+
+# Add drug features by generic type
+df_merge_class = find_nti_drugs(df_merge_class)
+df_merge_class = find_num_act_ingredients(df_merge_class)
 df_merge_class = df_merge_class.merge(df_manuf_per_generic,
                                       right_index=True,
                                       left_index=True,
                                       how='inner')
 
+#price_incr_decr = df_merge_class['diff_avg_spending_per_dose']
+#price_incr_decr[price_incr_decr < 0] = 0
+#price_incr_decr[price_incr_decr > 0] = 1
+#df_merge_class['price_change'] = price_incr_decr
 
 df_merge_class = df_merge_class.fillna(0)
 
-df_merge_class_2 = df_merge_class[df_merge_class['risk_class'] == 0]
+
+#manuf = df_manuf_per_generic.copy()
+#incre_manuf = manuf['increase_manuf']
+#incre_manuf[incre_manuf < 0] = 0
+#incre_manuf[incre_manuf > 0] = 1
+#df_merge_class_t['increase_manuf'] = df_merge_class_t['increase_manuf']
+
 
 
 p = np.isinf(df_merge_class).any()
+df_merge_class['diff_avg_spending_per_dose'][np.isinf(df_merge_class['diff_avg_spending_per_dose'])] = 0
+df_merge_class_2 = df_merge_class[df_merge_class['risk_class'] == 0]
+
 # add this back in 'diff_avg_spending_per_dose'
 
+df_merge_class_d = df_merge_class.drop(index=['0.9 % sodium chloride',
+                                              'aa 5 %/calcium/lytes/dext 15 %',
+                                              'abacavir sulfate/lamivudine',
+                                              'abacavir/dolutegravir/lamivudi',
+                                              'acetaminophen/caff/dihydrocod',
+                                              'acetic acid/aluminum acetate',
+                                              'acyclovir/hydrocortisone',
+                                              'adalimumab',
+                                              'adapalene/benzoyl peroxide',
+                                              'ado-trastuzumab emtansine',
+                                              'agalsidase beta',
+                                              'alendronate sodium/vitamin d3'])
+
 # Create Model
-compare_classifiers(df_merge_class[['total_beneficiaries', 'total_claims',
+compare_classifiers(df_merge_class_d[['total_beneficiaries', 'total_claims',
                                     'total_dosage_units','total_spending',
                                     'dose_price_range',
                                     'total_bene_range', 'total_claim_range',
                                     'total_dosage_range', 'total_spending_range',
                                     'diff_spending', 'diff_dosage', 'diff_claims', 
-                                    'diff_bene', 'increase_manuf', 'total_manuf']],df_merge_class[['classify_risk']])
+                                    'diff_bene', 'increase_manuf', 'total_manuf',
+                                    'diff_avg_spending_per_dose', 'nti_index',
+                                    'num_act_ingredients']],df_merge_class_d[['classify_risk']])
 
 # Random Forest Model
 df_features = df_merge_class[['total_beneficiaries', 'total_claims',
@@ -90,9 +127,16 @@ df_features = df_merge_class[['total_beneficiaries', 'total_claims',
                                     'total_bene_range', 'total_claim_range',
                                     'total_dosage_range', 'total_spending_range',
                                     'diff_spending', 'diff_dosage', 'diff_claims', 
-                                    'diff_bene']]
-resp_var = df_merge_class[['serious_count']]
+                                    'diff_bene', 'increase_manuf', 'total_manuf',
+                                    'diff_avg_spending_per_dose', 'nti_index',
+                                    'num_act_ingredients']]
+resp_var = df_merge_class[['classify_risk']]
 random_forest_model()
+
+# Examining the data
+#p = df_merge_ad_spending[['brand_name', 'generic_name', 'total_beneficiaries',
+#                          'serious_count', 'serious_per_bene']]
+
 
 # Important features
 

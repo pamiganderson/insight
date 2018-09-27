@@ -21,7 +21,7 @@ def find_nti_drugs(df_merge_class):
                 'warfarin sodium',
                 'tacrolimus']
     nti_risk = []
-    for i, val in enumerate(df_merge_class.index):
+    for i, val in enumerate(df_merge_class.index.values):
         if val in nti_list:
             nti_risk.append(1)
         else:
