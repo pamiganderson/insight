@@ -78,12 +78,60 @@ def merge_spending_df_and_ad_df(df_spending_2014, df_piv_adv_2014_brand):
                                        values = ['total_spending', 
                                                  'total_dosage_units', 
                                                  'total_claims', 
-                                                 'total_beneficiaries',
-                                                 'average_spending_per_dosage_unit',
-                                                 'manufacturer'],
+                                                 'total_beneficiaries'],
                                        aggfunc = np.sum)
+    df_spending_brand_min = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+                                                                  'generic_name'],
+                                       values = ['average_spending_per_dosage_unit'],
+                                       aggfunc = min).reset_index()
+    df_spending_brand_max = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+                                                                  'generic_name'],
+                                       values = ['average_spending_per_dosage_unit',
+                                                 'manufacturer'],
+                                       aggfunc = max).reset_index()
     df_spending_brand = df_spending_brand.reset_index()
-        
+    df_spending_brand['min_price_per_dose'] = df_spending_brand_min['average_spending_per_dosage_unit']
+    df_spending_brand['max_price_per_dose'] = df_spending_brand_max['average_spending_per_dosage_unit']
+    df_spending_brand['manufacturer'] = df_spending_brand_max['manufacturer']
+    # Merge with adverse events numbers
+    df_merge_2014 = df_spending_brand.merge(df_piv_adv_2014_brand, left_on='brand_name',
+                                      right_on='drug_brand_name',
+                                      how = 'left')
+    df_merge_2014['serious_per_bene'] = 100*(df_merge_2014['serious_count']/df_merge_2014['total_beneficiaries'])
+    return df_merge_2014
+
+def merge_spending_df_tot_and_ad_df(df_spending_2014, df_piv_adv_2014_brand):
+    df_spending_brand = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+                                                                  'generic_name'],
+                                       values = ['total_spending', 
+                                                 'total_dosage_units', 
+                                                 'total_claims', 
+                                                 'total_beneficiaries'],
+                                       aggfunc = np.sum)
+    df_spending_brand_mean = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+                                                                  'generic_name'],
+                                       values = ['diff_spending', 
+                                                 'diff_dosage', 
+                                                 'diff_claims', 
+                                                 'diff_bene',
+                                                 'diff_avg_spending_per_dose'],
+                                       aggfunc = np.nanmean)
+    df_spending_brand = df_spending_brand.merge(df_spending_brand_mean,
+                                                left_index=True,
+                                                right_index=True,
+                                                how='inner')
+    df_spending_brand_min = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+                                                                  'generic_name'],
+                                       values = ['average_spending_per_dosage_unit'],
+                                       aggfunc = min).reset_index()
+    df_spending_brand_max = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+                                                                  'generic_name'],
+                                       values = ['average_spending_per_dosage_unit'],
+                                       aggfunc = max).reset_index()
+    df_spending_brand = df_spending_brand.reset_index()
+    df_spending_brand['min_price_per_dose'] = df_spending_brand_min['average_spending_per_dosage_unit']
+    df_spending_brand['max_price_per_dose'] = df_spending_brand_max['average_spending_per_dosage_unit']
+
     # Merge with adverse events numbers
     df_merge_2014 = df_spending_brand.merge(df_piv_adv_2014_brand, left_on='brand_name',
                                       right_on='drug_brand_name',
@@ -92,13 +140,11 @@ def merge_spending_df_and_ad_df(df_spending_2014, df_piv_adv_2014_brand):
     return df_merge_2014
 
 def feature_and_generic_label(df):
-    # If no adverse events reported, assume 0
-    df = df.fillna(0)
+    # If no adverse events reported, assume 
     df = df.drop(['drug_brand_name', 'drug_generic_name'], axis=1)
     
-    df_na = df #df.dropna().sort_values(by='generic_name')
+    df_na = df.fillna(0) #df.dropna().sort_values(by='generic_name')
     risk_class_list = []
-    diff_cost_per_dose_list = []
     df_na = df_na.reset_index()
     # Find contingency table for each generic
     # format [[brand_ad_ev, brand_bene], [generic_ad_ev, generic_bene]]
@@ -106,31 +152,50 @@ def feature_and_generic_label(df):
         if df_na.iloc[i]['brand_name'] == val:
             # GENERIC NEG = -1
             risk_class_list.append(-1)
-            diff_cost_per_dose_list.append(df_na.iloc[i]['average_spending_per_dosage_unit'])
         else:
             # BRAND POS = 1
             risk_class_list.append(1)
-            diff_cost_per_dose_list.append(df_na.iloc[i]['average_spending_per_dosage_unit'])
     
     risk_series = pd.Series(risk_class_list).replace(np.inf, np.nan)
     risk_series = risk_series.replace(-np.inf, np.nan)
     df_na['risk_class'] = risk_series
-    df_na['diff_cost_per_dose'] = diff_cost_per_dose_list
-    
+    df['risk_class'] = risk_series
     df_piv_merge_generic_risk = pd.pivot_table(df_na, index = ['generic_name',
                                                                'risk_class'],
         values = ['serious_count', 'total_beneficiaries', 'total_claims',
-                  'total_dosage_units', 'total_spending', 'manufacturer',
-                  'diff_cost_per_dose'], aggfunc = np.sum).reset_index()
+                  'total_dosage_units', 'total_spending'],
+                  aggfunc = np.sum)
+    df_piv_merge_generic_risk_mean = pd.pivot_table(df, index = ['generic_name',
+                                                               'risk_class'],
+        values = ['diff_spending', 'diff_dosage', 'diff_claims', 
+                  'diff_bene', 'diff_avg_spending_per_dose'],
+                  aggfunc = np.nanmean)
+    df_piv_merge_generic_risk = df_piv_merge_generic_risk.merge(df_piv_merge_generic_risk_mean,
+                                                                left_index=True,
+                                                                right_index=True,
+                                                                how='inner').reset_index()
     df_piv_merge_generic_risk_max = pd.pivot_table(df_na, index = ['generic_name',
                                                                'risk_class'],
-        values = ['diff_cost_per_dose'], aggfunc = max).reset_index()    
+        values = ['max_price_per_dose'], aggfunc = max).reset_index()    
     df_piv_merge_generic_risk_min = pd.pivot_table(df_na, index = ['generic_name',
                                                            'risk_class'],
-        values = ['diff_cost_per_dose'], aggfunc = min).reset_index()
-    df_piv_merge_generic_risk['min_cost_per_dose'] = df_piv_merge_generic_risk_min['diff_cost_per_dose']
-    df_piv_merge_generic_risk['max_cost_per_dose'] = df_piv_merge_generic_risk_max['diff_cost_per_dose']
+        values = ['min_price_per_dose'], aggfunc = min).reset_index()
+    df_piv_merge_generic_risk['min_cost_per_dose'] = df_piv_merge_generic_risk_min['min_price_per_dose']
+    df_piv_merge_generic_risk['max_cost_per_dose'] = df_piv_merge_generic_risk_max['max_price_per_dose']
+#    df_piv_merge_generic_risk['manufacturer'] = df_piv_merge_generic_risk_max['manufacturer']
     return df_piv_merge_generic_risk
+
+def find_num_manuf_and_change(df_spending_pre, df_spending_post):
+    df_spending_2manuf_pre = pd.pivot_table(df_spending_pre, index = 'generic_name',
+                                         values = 'total_spending',
+                                         aggfunc = 'count')
+    df_spending_2manuf_post = pd.pivot_table(df_spending_post, index = 'generic_name',
+                                         values = 'total_spending',
+                                         aggfunc = 'count')
+    df_manufacturer = df_spending_2manuf_post-df_spending_2manuf_pre
+    df_manufacturer.columns = ['increase_manuf']
+    df_manufacturer['total_manuf'] = df_spending_2manuf_post['total_spending']
+    return df_manufacturer
 
 ########## CLASSIFICATION ##########
 def classify_generic_risk(df_piv_merge_generic_risk):    
@@ -175,22 +240,76 @@ def classify_generic_risk(df_piv_merge_generic_risk):
 
     df_piv_merge_generic_risk['p_val_chisq'] = pd.Series(p_val_chi_sq)
     #series_max_min = df_piv_merge_generic_risk['risk_class'].multiply(df_piv_merge_generic_risk['min_cost_per_dose'])
-    risk_boolean = df_piv_merge_generic_risk['risk_class']
-    risk_boolean[risk_boolean == 1] = True
-    risk_boolean[risk_boolean == -1] = False
-    series_max_min = df_piv_merge_generic_risk['min_cost_per_dose']
-    series_max_min[risk_boolean] = df_piv_merge_generic_risk['max_cost_per_dose']
-    df_piv_merge_generic_risk['dose_price_range'] = series_max_min
+    risk_boolean = df_piv_merge_generic_risk[['generic_name','risk_class']]
+    df_both_contain = pd.pivot_table(df_piv_merge_generic_risk, index='generic_name',
+                                     values = 'risk_class', aggfunc=np.sum)
+    both_list = df_both_contain[df_both_contain['risk_class']==0]
+    both_list = list(both_list.index.values)
+    
+    list_max_min = []
+    list_range_total_bene = []
+    list_range_total_claim =[]
+    list_range_total_dosage_units = []
+    list_range_total_spending = []
+    for i, val in enumerate(risk_boolean['generic_name']):
+        if val in both_list:
+            if risk_boolean.iloc[i]['risk_class'] == 1:
+                # For brand name drugs
+                list_max_min.append(df_piv_merge_generic_risk.iloc[i]['max_cost_per_dose'])
+                list_range_total_bene.append(df_piv_merge_generic_risk.iloc[i]['total_beneficiaries'])
+                list_range_total_claim.append(df_piv_merge_generic_risk.iloc[i]['total_claims'])
+                list_range_total_dosage_units.append(df_piv_merge_generic_risk.iloc[i]['total_dosage_units'])
+                list_range_total_spending.append(df_piv_merge_generic_risk.iloc[i]['total_spending'])
+            elif risk_boolean.iloc[i]['risk_class'] == -1:
+               # For generic drugs
+                list_max_min.append(-1*df_piv_merge_generic_risk.iloc[i]['min_cost_per_dose'])
+                list_range_total_bene.append(-1*df_piv_merge_generic_risk.iloc[i]['total_beneficiaries'])
+                list_range_total_claim.append(-1*df_piv_merge_generic_risk.iloc[i]['total_claims'])
+                list_range_total_dosage_units.append(-1*df_piv_merge_generic_risk.iloc[i]['total_dosage_units'])
+                list_range_total_spending.append(-1*df_piv_merge_generic_risk.iloc[i]['total_spending'])
+
+        else:
+            list_max_min.append(0)
+            list_range_total_bene.append(0)
+            list_range_total_claim.append(0)
+            list_range_total_dosage_units.append(0)
+            list_range_total_spending.append(0)
+            
+            
+    df_piv_merge_generic_risk['dose_price_range'] = pd.Series(list_max_min)
+    df_piv_merge_generic_risk['total_bene_range'] = pd.Series(list_range_total_bene)
+    df_piv_merge_generic_risk['total_claim_range'] = pd.Series(list_range_total_claim)
+    df_piv_merge_generic_risk['total_dosage_range'] = pd.Series(list_range_total_dosage_units)
+    df_piv_merge_generic_risk['total_spending_range'] = pd.Series(list_range_total_spending)
+    
     df_class_generic = pd.pivot_table(df_piv_merge_generic_risk, index = ['generic_name'],
                                       values = ['risk_class', 'total_beneficiaries',
                                                 'total_claims', 'total_dosage_units',
-                                                'total_spending', 'p_val_chisq', 'dose_price_range'],
+                                                'total_spending', 'p_val_chisq', 
+                                                'dose_price_range',
+                                                'total_bene_range', 'total_claim_range',
+                                                'total_dosage_range', 'total_spending_range',
+                                                'serious_count'],
                                       aggfunc = np.sum)
+    df_class_generic_mean = pd.pivot_table(df_piv_merge_generic_risk, index = ['generic_name'],
+                                      values = ['diff_spending', 'diff_dosage', 'diff_claims', 
+                                                'diff_bene', 'diff_avg_spending_per_dose'],
+                                      aggfunc = np.sum)
+    df_class_generic = df_class_generic.merge(df_class_generic_mean, right_index=True,
+                                              left_index=True, how='inner')
+#    df_class_generic_manuf = pd.pivot_table(df_piv_merge_generic_risk, index=['generic_name'],
+#                                            values = ['manufacturer'],
+#                                            aggfunc = max)
+#    df_class_generic['manufacturer'] = df_class_generic_manuf['manufacturer']
     classify_risk = df_class_generic['p_val_chisq']
-    classify_risk[classify_risk>=0]=1
-    classify_risk[classify_risk<0]=0
+    p_val_cutoff = 0
+    classify_risk[classify_risk>=p_val_cutoff]=1
+    classify_risk[classify_risk<p_val_cutoff]=0
 
     df_class_generic['classify_risk'] = classify_risk
+    
+    # Find the dataframe that contains both the generic and the brand drugs
+    df_class_generic_train = df_class_generic[df_class_generic['risk_class'] == 0]
 
 #    df_class_generic['risk_class'][df_class_generic['risk_class'] > 0] = 1
 #    df_class_generic['risk_class'][df_class_generic['risk_class'] < 0] = 0
@@ -226,8 +345,36 @@ def plot_manuf_vs_generic(df_spending_2014):
     plt.ylabel('Number of Adverse Events')
     plt.title('2014 Q1 Adverse Events vs. Manufacturer #')
 
+def find_spending_change(df_spending_pre, df_spending_post):
+    series_diff_spending = (df_spending_post[['total_spending']] - df_spending_pre[['total_spending']])/df_spending_pre[['total_spending']]
+    series_diff_dosage = (df_spending_post[['total_dosage_units']] - df_spending_pre[['total_dosage_units']])/df_spending_pre[['total_dosage_units']]
+    series_diff_claims = (df_spending_post[['total_claims']] - df_spending_pre[['total_claims']])/df_spending_pre[['total_claims']]
+    series_diff_bene = (df_spending_post[['total_beneficiaries']] - df_spending_pre[['total_beneficiaries']])/df_spending_pre[['total_beneficiaries']]
+    series_diff_avg_spending_per_dos = (df_spending_post[['average_spending_per_dosage_unit']] - df_spending_pre[['average_spending_per_dosage_unit']])/df_spending_pre[['average_spending_per_dosage_unit']]
     
+    series_diff_spending.replace([np.inf, -np.inf], np.nan)
+    series_diff_dosage.replace([np.inf, -np.inf], np.nan)
+    series_diff_claims.replace([np.inf, -np.inf], np.nan)
+    series_diff_bene.replace([np.inf, -np.inf], np.nan)
+    series_diff_avg_spending_per_dos.replace([np.inf, -np.inf], np.nan)
 
+    
+    df_spending_difference = pd.concat([series_diff_spending, series_diff_dosage, series_diff_claims,
+                                        series_diff_bene, series_diff_avg_spending_per_dos], axis=1)
 
+    df_spending_difference.columns = ['diff_spending', 'diff_dosage', 'diff_claims', 'diff_bene',
+                                      'diff_avg_spending_per_dose']
+    return df_spending_difference
+
+def merge_spending_diff(df_spending_2013, df_spending_difference):
+    # Merge spending by brand and adverse events
+    df_spending_2013 = df_spending_2013.drop(['average_spending_per_claim', 
+                                              'average_spending_per_beneficiary',
+                                              'manufacturer'], axis=1)
+    df_spending_tot = df_spending_2013.merge(df_spending_difference,
+                                                  left_index =True,
+                                                  right_index =True,
+                                                  how = 'inner')
+    return df_spending_tot
 
 
