@@ -87,7 +87,9 @@ def generate_table(dataframe, max_rows=5):
 	)
 
 ########## DASH APP ##########
+#app = dash.Dash(name)
 app = dash.Dash()
+app.css.append_css({"external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"})
 
 ## CUSTOM COLOR CONFIG ##
 colors_light = {
@@ -107,7 +109,7 @@ app.layout = html.Div(style={'backgroundColor': colors_light['background']}, chi
 	]),
 
 	html.Div([
-		html.Img(src='/assets/pill_background_2.jpg',  style={'width': '100%', 'height': '100%'}),
+		html.Img(src='/assets/pill_background.jpg',  style={'width': '100%', 'height': '100%'}),
 		html.Div(
 			children = 'Assessing Generic Drug Risk',
 			style = {
@@ -290,6 +292,8 @@ def generic_drug_table(value):
 			generate_table(df_sub)])
 
 
+# if __name__ == '__main__':
+# 	app.run_server(debug=True)
 if __name__ == '__main__':
-	app.run_server(debug=True)
+	app.run_server(host='0.0.0.0', debug=True)
 
