@@ -89,7 +89,7 @@ def generate_table(dataframe, max_rows=5):
 ########## DASH APP ##########
 #app = dash.Dash(name)
 app = dash.Dash(__name__)
-app.css.append_css({"external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"})
+#app.css.append_css({"external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"})
 
 ## CUSTOM COLOR CONFIG ##
 colors_light = {
