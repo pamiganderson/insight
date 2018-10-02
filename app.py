@@ -8,7 +8,7 @@ from dash.dependencies import Input, Output
 import time
 #from sqlalchemy import create_engine
 #from sqlalchemy_utils import database_exists, create_database
-import psycopg2
+#import psycopg2
 import pandas as pd
 import plotly.graph_objs as go
 
@@ -42,12 +42,12 @@ df = pd.read_pickle("./data/df_merge_ad_spending.pkl")
 # """
 df_patient_react = pd.read_pickle("./data/df_patient_react.pkl")
 
-def fetch_data(q):
-	result = pd.read_sql(
-		sql=q,
-		con=con
-	)
-	return result
+# def fetch_data(q):
+# 	result = pd.read_sql(
+# 		sql=q,
+# 		con=con
+# 	)
+# 	return result
 
 def get_generics():
 	'''Returns the list of generics that are stored in the database'''
@@ -107,7 +107,7 @@ app.layout = html.Div(style={'backgroundColor': colors_light['background']}, chi
 	]),
 
 	html.Div([
-		html.Img(src='/assets/pill_background.jpeg',  style={'width': '100%', 'height': '100%'}),
+		html.Img(src='/assets/pill_background_2.jpg',  style={'width': '100%', 'height': '100%'}),
 		html.Div(
 			children = 'Assessing Generic Drug Risk',
 			style = {
@@ -289,35 +289,6 @@ def generic_drug_table(value):
 		return html.Div(children=[
 			generate_table(df_sub)])
 
-
-# def update_figure(selected_generic):
-#     filtered_df = df[df.drug_generic_name == selected_generic]
-#     traces = []
-#     for i in filtered_df.continent.unique():
-#         df_by_continent = filtered_df[filtered_df['continent'] == i]
-#         traces.append(go.Scatter(
-#             x=df_by_continent['gdpPercap'],
-#             y=df_by_continent['lifeExp'],
-#             text=df_by_continent['country'],
-#             mode='markers',
-#             opacity=0.7,
-#             marker={
-#                 'size': 15,
-#                 'line': {'width': 0.5, 'color': 'white'}
-#             },
-#             name=i
-#         ))
-
-#     return {
-#         'data': traces,
-#         'layout': go.Layout(
-#             xaxis={'type': 'log', 'title': 'GDP Per Capita'},
-#             yaxis={'title': 'Life Expectancy', 'range': [20, 90]},
-#             margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
-#             legend={'x': 0, 'y': 1},
-#             hovermode='closest'
-#         )
-#     }
 
 if __name__ == '__main__':
 	app.run_server(debug=True)
