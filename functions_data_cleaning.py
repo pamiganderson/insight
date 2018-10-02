@@ -74,10 +74,12 @@ def clean_ad_ev_table(df):
     drug_brand_series[(df['drug_generic_name'] == 'acyclovir sodium') & (df['drug_manuf_name'] != 'Prestium Pharma, Inc.')] = 'acyclovir'
     drug_brand_series[(df['drug_generic_name'] == 'lisinopril') & (df['drug_manuf_name'] != 'LUPIN LIMITED')] = 'lisinopril'
     drug_brand_series[(df['drug_generic_name'] == 'lisinopril/hydrochlorothiazide') & (df['drug_manuf_name'] != 'Almatica Pharma Inc.')] = 'lisinopril/hydrochlorothiazide'
+    drug_brand_series[(df['drug_generic_name'] == 'azacitidine') & (df['drug_manuf_name'] != 'Celgene Corporation')] = 'azacitidine'
+
 
     drug_brand_series = drug_brand_series.str.replace('methotrexate', 'methotrexate sodium')
     drug_brand_series = drug_brand_series.str.replace('montelukast sodium chewable', 'montelukast sodium')
-    drug_brand_series = drug_brand_series.str.repalce('nevirapine extended release', 'nevirapine')
+    drug_brand_series = drug_brand_series.str.replace('nevirapine extended release', 'nevirapine')
     drug_brand_series = drug_brand_series.str.replace('raloxifene', 'raloxifene hci')
     drug_brand_series = drug_brand_series.str.replace('being well heartburn relief', 'ranitidine hci')
     drug_brand_series = drug_brand_series.str.replace('acid reducer', 'ranitidine hci')
@@ -96,24 +98,6 @@ def clean_ad_ev_table(df):
     drug_brand_series[(df['drug_generic_name'] == 'phenytoin') & (df['drug_manuf_name'] != 'Pfizer Laboratories Div Pfizer Inc')] = 'phenytoin'
     drug_brand_series[(df['drug_generic_name'] == 'ranitidine hci') & (df['drug_manuf_name'] != 'GlaxoSmithKline Consumer Healthcare Holdings (US) LLC')] = 'ranitidine hci'
     drug_brand_series[(df['drug_generic_name'] == 'sertraline') & (df['drug_manuf_name'] != 'Pfizer Laboratories Div Pfizer Inc')] = 'sertraline hci'
-
-
-sertraline
-
-
-Wyeth Pharmaceuticals LLC, a subsidiary of Pfizer Inc.
-
-
-
-
-
-
-
-
-
-
-
-
 
     df['drug_generic_name_re'] = drug_gen_series
     df['drug_brand_name_re'] = drug_brand_series

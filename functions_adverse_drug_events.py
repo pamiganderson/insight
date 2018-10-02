@@ -12,6 +12,10 @@ import os
 import json
 import operator
 
+path = '/Users/pamelaanderson/Documents/Insight/fda_drug_recall/'
+year = '2013'
+q = 'Q4'
+
 def load_adverse_events(path, year, q):
     path_w_year = path + year + '/' + q + '/'
     json_files = os.listdir(path_w_year)
@@ -36,7 +40,7 @@ def load_adverse_events(path, year, q):
     return df_adverse_ev
 
 def drop_unneeded_cols(df_adverse_ev):
-    drop_cols = ['authoritynumb','companynumb','duplicate', 'occurcountry',
+    drop_cols = ['companynumb','duplicate', 'occurcountry',
                  'patient', 
                  'primarysourcecountry', 'receiptdateformat',
                  'receiver', 'receivedate', 'receivedateformat', 'reportduplicate',
@@ -112,6 +116,7 @@ def extract_patient_features(df_adverse_ev):
     patient_sex = []
     patient_age = []
     patient_reaction = []
+    patient_reaction_type = []
     for i in range(0,len(df_adverse_ev)):
         col_names = list(df_adverse_ev.iloc[i]['patient'].keys())
         if 'patientsex' in col_names:
@@ -125,16 +130,22 @@ def extract_patient_features(df_adverse_ev):
         if 'reaction' in col_names:
             reaction_dict = df_adverse_ev.iloc[i]['patient']['reaction']
             reaction_score = []
+            reaction_type = []
             for k in range(0, len(reaction_dict)):
                 col_names_react_dict = list(reaction_dict[k].keys())
                 if 'reactionoutcome' in col_names_react_dict:
                     reaction_score.append(pd.to_numeric(reaction_dict[k]['reactionoutcome']))
+                if 'reactionmeddrapt' in col_names_react_dict:
+                    reaction_type.append(reaction_dict[k]['reactionmeddrapt'])
+            patient_reaction_type.append(reaction_type[0])
             patient_reaction.append(np.mean(reaction_score))
         else:
             patient_reaction.append(np.nan)
+            patient_reaction_type.append(np.nan)
     patient_info = pd.DataFrame({'patient_sex' : patient_sex,
                                  'patient_age' : patient_age,
-                                 'patient_reaction' : patient_reaction})
+                                 'patient_reaction' : patient_reaction,
+                                 'patient_react_type' : patient_reaction_type})
     df_adverse_ev = pd.concat([df_adverse_ev, patient_info], axis= 1)
     return df_adverse_ev
 
@@ -227,7 +238,33 @@ def merge_ad_ev_tables(df_ad_data_q1, df_ad_data_q2):
     df_ad_data_merge = df_ad_data_merge.drop(cols_drop, axis=1)
     return df_ad_data_merge
 
-def merge_2_me_tables(df_ad_data_merge_1, df_ad_data_merge_2):
+def merge_ad_ev_tables_serious(df_ad_data_q1, df_ad_data_q2):
+    cols_drop = ['serious_count_x',
+                 'serious_count_y',
+                 'drug_generic_name_x',
+                 'drug_generic_name_y',
+                 'drug_manuf_name_x',
+                 'drug_manuf_name_y']
+    df_ad_data_merge = df_ad_data_q1.merge(df_ad_data_q2, on = 'drug_brand_name',
+                                           how = 'outer')
+    df_ad_data_merge = df_ad_data_merge.fillna(0)
+    df_ad_data_merge['serious_count'] = (df_ad_data_merge['serious_count_x'] +
+                                            df_ad_data_merge['serious_count_y'])
+    drug_gen_list = []
+    drug_manuf_list = []
+    for i in range(0, len(df_ad_data_merge)):
+        if df_ad_data_merge.iloc[i]['drug_generic_name_x'] == 0:
+            drug_gen_list.append(df_ad_data_merge.iloc[i]['drug_generic_name_y'])
+            drug_manuf_list.append(df_ad_data_merge.iloc[i]['drug_manuf_name_y'])
+        else:
+            drug_gen_list.append(df_ad_data_merge.iloc[i]['drug_generic_name_x'])
+            drug_manuf_list.append(df_ad_data_merge.iloc[i]['drug_manuf_name_x'])
+    df_ad_data_merge['drug_generic_name'] = pd.Series(drug_gen_list)
+    df_ad_data_merge['drug_manuf_name'] = pd.Series(drug_manuf_list)
+    df_ad_data_merge = df_ad_data_merge.drop(cols_drop, axis=1)
+    return df_ad_data_merge
+
+def merge_2_me_tables_serious(df_ad_data_merge_1, df_ad_data_merge_2):
     cols_drop = ['serious_count_x',
                  'serious_count_y',
                  'drug_generic_name_x',

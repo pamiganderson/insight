@@ -86,103 +86,52 @@ def compare_classifiers(df_features, resp_var):
 
     return results
 
-def random_forest_regressor(df_features, resp_var):
-
-    import seaborn as sns
-    from scipy import stats
-    from scipy.stats import norm
-    sns.distplot(resp_var,fit=norm);
-    fig = plt.figure()
-    res = stats.probplot(resp_var, plot=plt)
-    
-    # Prepare data
-    seed = 42
-    X = df_features
-    y = resp_var
-    X_train, X_test, y_train, y_test = train_test_split(X, y, 
-                                                        test_size = 0.25,
-                                                        random_state = seed)
-    
-    # DECISION TREE Feature importance
-    dt = rfr()
-    estimators = [2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
-    for i in estimators:
-        model = rfr(n_estimators=i,max_depth=None)
-        scores_rfr = cross_val_score(model,X,y,cv=10,scoring='explained_variance')
-        print('estimators:',i)
-
-    # to see hyperparameters names: dt.get_params()
-    params_dt = {'min_samples_leaf' : [0.05, 0.1, 0.15],
-                 'max_depth' : [3, 4, 5, 6, 7]}
-    
-    grid_dt = GridSearchCV(estimator = dt, 
-                           param_grid = params_dt, 
-                           cv=5, scoring = 'roc_auc')
-    grid_dt.fit(X_train, y_train)
-    
-    # Find best model parameters
-    dt_best_model = grid_dt.best_estimator_
-    y_pred = dt_best_model.predict(X_test)
-    classification_report(y_test, y_pred)
-    confusion_matrix(y_test, y_pred)
-
-    #plot important features
-    importances_dt = pd.Series(dt_best_model.feature_importances_,
-                               index = X.columns)
-    sorted_importances_dt = importances_dt.sort_values()
-    graph_title = 'Decision Tree Important Features'
-    plot_feature_importance(sorted_importances_dt, graph_title)
-    
-    dict_results= {'confusion_matrix' : confusion_matrix(y_test, y_pred),
-                   'classification_report' : classification_report(y_test, y_pred),
-                   'best_model_parameters' : grid_dt.best_params_,
-                   'best_model' : grid_dt.best_estimator_,
-                   'best_roc_score' : grid_dt.best_score_
-                   }
-    return dict_results
 
 def random_forest_model(df_features, resp_var):
-
+    
+    roc_dict = {}
     roc_list = []
-    for i in range(0,100:
-        # Prepare data
-        seed = 42
+    # Prepare data
+    for i in range(0,25):
+        seed = i
         X = df_features
         y = resp_var
         X_train, X_test, y_train, y_test = train_test_split(X, y, 
-                                                            test_size = 0.25,
+                                                            test_size = 0.3,
                                                             stratify=y,
                                                             random_state = seed)
         
-        # DECISION TREE Feature importance
-        dt = RandomForestClassifier(class_weight = 'balanced', random_state = seed, criterion = 'entropy')
-        # to see hyperparameters names: dt.get_params()
-        params_dt = {'min_samples_leaf' : [0.02, 0.05, 0.1, 0.15],
-                     'max_depth' : [2, 3, 4]}
+        # Random Forest 
+        rf = RandomForestClassifier(class_weight = 'balanced', criterion = 'entropy')
+        # to see hyperparameters names: rf.get_params()
+        params_rf = {'min_samples_leaf' : [0.02, 0.05, 0.1, 0.15, 0.2],
+                     'max_depth' : [4, 5, 6, 7, 8]}
         
-        grid_dt = GridSearchCV(estimator = dt, 
-                               param_grid = params_dt, 
-                               cv=10, scoring = 'roc_auc')
-        grid_dt.fit(X_train, y_train)
+        grid_rf = GridSearchCV(estimator = rf, 
+                               param_grid = params_rf, 
+                               cv=5, scoring = 'precision_score')
+        grid_rf.fit(X_train, y_train)
         
         # Find best model parameters
-        dt_best_model = grid_dt.best_estimator_
-        y_pred = dt_best_model.predict(X_test)
+        rf_best_model = grid_rf.best_estimator_
+        y_pred = rf_best_model.predict(X_test)
         classification_report(y_test, y_pred)
         confusion_matrix(y_test, y_pred)
     
         #plot important features
-        importances_dt = pd.Series(dt_best_model.feature_importances_,
+        importances_rf = pd.Series(rf_best_model.feature_importances_,
                                    index = X.columns)
-        sorted_importances_dt = importances_dt.sort_values()
-        graph_title = 'Decision Tree Important Features'
-        #plot_feature_importance(sorted_importances_dt, graph_title)
+        sorted_importances_rf = importances_rf.sort_values()
+        graph_title = 'Random Forest Important Features'
+        plot_feature_importance(sorted_importances_rf, graph_title)
         
         dict_results= {'confusion_matrix' : confusion_matrix(y_test, y_pred),
                        'classification_report' : classification_report(y_test, y_pred),
-                       'best_model_parameters' : grid_dt.best_params_,
-                       'best_model' : grid_dt.best_estimator_,
-                       'best_roc_score' : grid_dt.best_score_
+                       'best_model_parameters' : grid_rf.best_params_,
+                       'best_model' : grid_rf.best_estimator_,
+                       'best_roc_score' : grid_rf.best_score_
                        }
-        roc_list.append(grid_dt.best_params_)
+        roc_dict[i] = dict_results
+        roc_list.append(grid_rf.best_score_)
+        
     return dict_results

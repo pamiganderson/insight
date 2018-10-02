@@ -16,264 +16,269 @@ import plotly.graph_objs as go
 ########## QUERIES ##########
 # Define a database name (we're using a dataset on births, so we'll call it birth_db)
 # Set your postgres username
-dbname = 'fda_adverse_events'
-username = 'pami' # change this to your username
+# dbname = 'fda_adverse_events'
+# username = 'pami' # change this to your username
 
 ### QUERYING THE DATABASE ###
 # Connect to make queries using psycopg2
-con = None
-con = psycopg2.connect(database = dbname, user = username)
+# con = None
+# con = psycopg2.connect(database = dbname, user = username)
 # query:
-sql_query = """
-SELECT *
-FROM df_merge_classify_final;
-"""
-df_classify = pd.read_sql_query(sql_query,con)
+# sql_query = """
+# SELECT *
+# FROM df_merge_classify_final;
+# """
+df_classify = pd.read_pickle("./data/df_merge_classify_final.pkl")
 
-sql_query = """
-SELECT *
-FROM df_spending_adverse_total;
-"""
-df = pd.read_sql_query(sql_query,con)
+# sql_query = """
+# SELECT *
+# FROM df_spending_adverse_total;
+# """
+df = pd.read_pickle("./data/df_merge_ad_spending.pkl")
+
+# sql_query = """
+# SELECT *
+# FROM df_patient_react_2013_table;
+# """
+df_patient_react = pd.read_pickle("./data/df_patient_react.pkl")
 
 def fetch_data(q):
-    result = pd.read_sql(
-        sql=q,
-        con=con
-    )
-    return result
+	result = pd.read_sql(
+		sql=q,
+		con=con
+	)
+	return result
 
 def get_generics():
-    '''Returns the list of generics that are stored in the database'''
+	'''Returns the list of generics that are stored in the database'''
 
-    generic_query = (
-        f'''
-        SELECT DISTINCT(generic_name)
-        FROM df_spending_adverse_total;
-        '''
-    )
-    generics = fetch_data(generic_query)
-    generics = list(generics['generic_name'].sort_values(ascending=True))
-    return generics
+	# generic_query = (
+	# 	f'''
+	# 	SELECT DISTINCT(generic_name)
+	# 	FROM df_spending_adverse_total;
+	# 	'''
+	# )
+	# generics = fetch_data(generic_query)
+	generics = pd.read_pickle("./data/df_merge_ad_spending.pkl")
+	generics = generics['generic_name']
+	generics = list(generics.sort_values(ascending=True))
+	return generics
 
 def onLoad_generic_options():
-    '''Actions to perform upon initial page load'''
+	'''Actions to perform upon initial page load'''
 
-    generic_options = (
-        [{'label': generic, 'value': generic}
-         for generic in get_generics()]
-    )
-    return generic_options
-
-def high_risk_func():
-	return 'GENERIC POSES HIGH RISK'
-def low_risk_func():
-	return 'GENERIC POSES LOW RISK'
+	generic_options = (
+		[{'label': generic, 'value': generic}
+		 for generic in get_generics()]
+	)
+	return generic_options
 
 
 ########## FUNCTIONS FOR TABLES AND GRAPHS ##########
-def generate_table(dataframe, max_rows=10):
-    return html.Table(
-        # Header
-        [html.Tr([html.Th(col) for col in dataframe.columns])] +
+def generate_table(dataframe, max_rows=5):
+	return html.Table(
+		# Header
+		[html.Tr([html.Th(col) for col in dataframe.columns])] +
 
-        # Body
-        [html.Tr([
-            html.Td(dataframe.iloc[i][col]) for col in dataframe.columns
-        ]) for i in range(min(len(dataframe), max_rows))]
-    )
+		# Body
+		[html.Tr([
+			html.Td(dataframe.iloc[i][col]) for col in dataframe.columns
+		], style={'textAlign': 'center'}) for i in range(min(len(dataframe), max_rows))]
+	)
 
 ########## DASH APP ##########
 app = dash.Dash()
 
 ## CUSTOM COLOR CONFIG ##
-colors_banner = {
-	'background' : '#ffffff',
-	'text': '#000000'
-}
 colors_light = {
-    'background': '#111111',
-    'text': '#337cb6'
-}
-colors_dark = {
-    'background': '#111111',
-    'text': '#232c63'
+	'background': '#f4f5f8',
+	'text': '#1e2832'
 }
 
-app.layout = html.Div(style={'backgroundColor': '#f4f5f8'}, children=[
-    html.Div([
-	    # Page Header
-	    html.H1(
-	    	children = 'Generic''s For Geriatrics',
-	    	style = {
-	    		'textAlign' : 'center',
-	    		'color' : colors_banner['text']
-	    	}
+app.layout = html.Div(style={'backgroundColor': colors_light['background']}, children=[
+	html.Div([
+		# Page Header
+		html.Div(
+			className="app-header",
+			children=[
+				html.Div('Generic''s For Geriatrics', className="app-header--title")
+			]
 		),
-	    
-	    # Page Sub Header
-	    html.H3(
-	    	children = 'Assessing Generic Drug Risk',
-	    	style = {
-	    		'textAlign' : 'center',
-	    		'color' : colors_banner['text'],
-	    		'fontSize' : 25
-	    	}
-		)
 	]),
 
-	html.Br(),
-	html.Br(),
+	html.Div([
+		html.Img(src='/assets/pill_background.jpeg',  style={'width': '100%', 'height': '100%'}),
+		html.Div(
+			children = 'Assessing Generic Drug Risk',
+			style = {
+				'position': 'absolute',
+				'left': 15, 'top': 75,
+				'textAlign' : 'left',
+				'color' : colors_light['text'],
+				'fontSize' : 20, 
+				'backgroundColor': 'transparent'
+			}
+		)
+	], className="row"),
 
-    # Select generic Dropdown
-    html.Div([
-        html.Div('Select Generic Drug', className='three columns', style={'position': 'absolute', 'left': 125, 'top': 185}),
-        html.Div(dcc.Dropdown(id='generic-selector',
-                              options=onLoad_generic_options()),
-                 className='one columns',
-	    		 style={'position': 'absolute', 'left': 250, 'top': 180, "width" : "50%"})
-    ], className="row"),
+	# Select generic Dropdown
+	html.Div([
+		html.Div('Select Generic Drug', className='three columns', style={'position': 'absolute', 'left': 125, 'top': 235}),
+		html.Div(dcc.Dropdown(id='generic-selector',
+							  options=onLoad_generic_options()),
+				 className='one columns',
+				 style={'position': 'absolute', 'left': 250, 'top': 230, "width" : "50%"})
+	], className="row"),
 
-	html.Br(),
-	html.Br(),
-
-    # Page Sub Header
-	# html.Div([
-	# 	html.H3(id='output-risk'), style={'textAlign' : 'center', 'color': 'red'}),
-	# ], className="row"),
-
+	# Risk output
 	html.Div(id='output-risk', className="row"),
 
-    # Display the plots for the selected drug
-    html.Div([
-        html.Div([
-            html.H3('# Patients on Drug'),
-            dcc.Graph(id='patients_on_drug')
-        ], className="six columns"),
+	# Blank spaces
+	html.Br(),
 
-        html.Div([
-            html.H3('Price Comparator'),
-            dcc.Graph(id='price_compare')
-        ], className="six columns"),
-    ], className="row"),
+	# Table wit Adverse events
+	html.Div(id='generic-adr', style={'position' : 'relative', 'left': '40%', 'width': '50%'}),
 
 	html.Br(),
 	html.Br(),
 
-	    # Page Sub Header
-    html.H3(
-    	children = 'Basic Drug Information',
-    	style = {
-    		'textAlign' : 'center',
-    		'color' : colors_banner['text'],
-    		'fontSize' : 25
-    	}
+	# Display the plots for the selected drug
+	html.Div([
+		html.Div([
+			dcc.Graph(id='patients_on_drug')
+		], className="six columns"),
+
+		html.Div([
+			dcc.Graph(id='price_compare')
+		], className="six columns"),
+	], className="row"),
+
+	html.Br(),
+	html.Br(),
+
+	# Table with Drug information
+	html.H6(
+		children = 'Basic Drug Information',
+		style = {
+			'textAlign' : 'center',
+			'color' : colors_light['text'],
+			'fontSize' : 25
+		}
 	),
-    html.Div(id='generic-information', style={'textAlign' : 'center'})
-
-    # html.Div([
-    #     html.Div([
-    #         html.H3(''),
-    #         dcc.Graph(id='')
-    #     ], className="six columns"),
-
-    #     html.Div([
-    #         html.H3('Graph 4'),
-    #         dcc.Graph(id='g3', figure={'data': [{'y': [1, 2, 3]}]})
-    #     ], className="six columns"),
-    # ], className="row")
+	html.Div(id='generic-information', style={'textAlign' : 'center'})
 
 ])
 
-# app.css.append_css({
-#     'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'
-# })
-
-# app.layout = html.Div(children=[
-#     html.H4(children='US Agriculture Exports (2011)'),
-#     generate_table(df_ad_data_from_sql_q1)
-# ])
-# Display the adverse events plots
+# Display generic risk
 @app.callback(
-    dash.dependencies.Output('output-risk', 'children'),
-    [dash.dependencies.Input('generic-selector', 'value')])
-# def model_risk_value(value):
-#     message = list()
-#     if value is not None:
-#     	df_classify_generic = df_classify[df_classify['generic_name'] == value]
-#     	p = df_classify_generic['classify_risk']
-#     	risk = 'GENERIC POSES HIGH RISK' if p.all() == 0 else 'GENERIC POSES LOW RISK'
-#     	print(p)
-#     	return '{}'.format(risk)
+	dash.dependencies.Output('output-risk', 'children'),
+	[dash.dependencies.Input('generic-selector', 'value')])
 def model_risk_value(value):
-    message = list()
-    if value is not None:
-    	df_classify_generic = df_classify[df_classify['generic_name'] == value]
-    	p = df_classify_generic['classify_risk']
-    	risk = 'GENERIC POSES HIGH RISK' if p.all() == 0 else 'GENERIC POSES LOW RISK'
-    	color_output = 'red' if p.all() == 0 else '#75a0c7'
-    	return html.Div('{}'.format(risk), style={'textAlign' : 'center', 'color' : color_output, 
-    		'fontSize' : 20})
+	message = list()
+	if value is not None:
+		df_classify_generic = df_classify[df_classify['generic_name'] == value]
+		p = df_classify_generic['classify_risk']
+		risk = 'GENERIC POSES HIGH RISK' if p.all() == 0 else 'GENERIC POSES LOW RISK'
+		# color_output = 'red' if p.all() == 0 else '#75a0c7'
+		if p.all() == 0:
+			color_output = 'red'
+			text_color = colors_light['background']
+		else:
+			color_output = '#1e2832'
+			text_color = colors_light['background']
+		return html.H3('{}'.format(risk), style={'textAlign' : 'center', 'backgroundColor' : color_output, 
+			'fontSize' : 30, 'color': text_color, 'width': '50%', 
+			'position': 'relative', 'left': '25%', "width" : "50%"})
 
-
+@app.callback(
+	dash.dependencies.Output('generic-adr', 'children'),
+	[dash.dependencies.Input('generic-selector', 'value')])
+def generic_adr_table(value):
+	df_generic = df_patient_react[df_patient_react['drug_generic_name'] == value]
+	print(df_generic.columns.values)
+	if df_generic.empty:
+		txt_disp = 'No Adverse Drug Reactions Reported Last 2 Years'
+		df_sub = pd.DataFrame()
+	else:
+		txt_disp = 'Adverse Drug Reactions'
+		df_generic = df_generic.sort_values(by='reaction', ascending=False)
+		df_sub = df_generic[['patient_react_type']]
+		df_sub.rename(columns={'patient_react_type' : 'Top Five Most Common'}, inplace=True)
+	if value is not None:
+		return html.Div(children=[
+				html.H5(
+					children = txt_disp,
+					style = {
+						'color' : colors_light['text'],
+						'position' : 'relative', 'width': '50%', 'textAlign' : 'center'
+					}),
+				generate_table(df_sub)]) #, style={'position' : 'relative', 'right': '70%'})
 
 # Display the price difference
 @app.callback(
-    dash.dependencies.Output('price_compare', 'figure'),
-    [dash.dependencies.Input('generic-selector', 'value')])
+	dash.dependencies.Output('price_compare', 'figure'),
+	[dash.dependencies.Input('generic-selector', 'value')])
 def update_output(value):
-    filtered_df = df[df['generic_name'] == value]
-    price_min_max = filtered_df['min_price_per_dose']
-    if value is not None:
-	    return {
-	        'data': [go.Bar(
-	            x=filtered_df['brand_name'],
-	            y=filtered_df['max_price_per_dose'],
-	            opacity=0.7,
-	        )],
-	        'layout': go.Layout(
-	            xaxis={'title': 'Drug Name'},
-	            yaxis={'title': 'Price ($)'},
-	            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
-	            #legend={'x': 0, 'y': 1},
-	            hovermode='closest'
-	        )
-	        # 'layout': {
-	        #     'plot_bgcolor': '#f4f5f8',
-	        #     'paper_bgcolor': '#f4f5f8',
-	        #     'opacity' : 0.7,
-	        #     'height': 450,
-	        #     'margin': {'l': 20, 'b': 30, 'r': 10, 't': 10},
-	        #     'yaxis': {'title': 'Price ($)', 'type': 'linear'},
-	        #     'xaxis': {'title' : 'Drug Name', 'showgrid': False}
-	        # }
-	    }
+	filtered_df = df[df['generic_name'] == value]
+	price_min_max = filtered_df['min_price_per_dose']
+	if value is not None:
+		return {
+			'data': [go.Bar(
+				x=filtered_df['brand_name'],
+				y=filtered_df['max_price_per_dose'],
+				opacity=0.7,
+				marker={'color':'green'}
+			)],
+			'layout': go.Layout(
+				title='Price Comparison',
+				xaxis={'title': 'Drug Name'},
+				yaxis={'title': 'Price ($)'},
+				margin={'l': 40, 'b': 70, 't': 40, 'r': 10},
+				paper_bgcolor=colors_light['background'],
+				plot_bgcolor=colors_light['background'],
+				#legend={'x': 0, 'y': 1},
+				hovermode='closest'
+			)
+			# 'layout': {
+			#     'plot_bgcolor': '#f4f5f8',
+			#     'paper_bgcolor': '#f4f5f8',
+			#     'opacity' : 0.7,
+			#     'height': 450,
+			#     'margin': {'l': 20, 'b': 30, 'r': 10, 't': 10},
+			#     'yaxis': {'title': 'Price ($)', 'type': 'linear'},
+			#     'xaxis': {'title' : 'Drug Name', 'showgrid': False}
+			# }
+		}
 
 # Display the number of patients on drug difference
 @app.callback(
-    dash.dependencies.Output('patients_on_drug', 'figure'),
-    [dash.dependencies.Input('generic-selector', 'value')])
+	dash.dependencies.Output('patients_on_drug', 'figure'),
+	[dash.dependencies.Input('generic-selector', 'value')])
 def update_output(value):
-    filtered_df = df[df['generic_name'] == value]
-    if value is not None:
-	    return {
-	        'data': [go.Bar(
-	            x=filtered_df['brand_name'],
-	            y=filtered_df['total_beneficiaries'],
-	            opacity=0.7,
-	        )],
-	        'layout': go.Layout(
-	            xaxis={'title': 'Drug Name'},
-	            yaxis={'type': 'log', 'title': '# Patients'},
-	            margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
-	            #legend={'x': 0, 'y': 1},
-	            hovermode='closest'
-	        )
-	    }
+	filtered_df = df[df['generic_name'] == value]
+	if value is not None:
+		return {
+			'data': [go.Bar(
+				x=filtered_df['brand_name'],
+				y=filtered_df['total_beneficiaries'],
+				opacity=0.7,
+				marker={'color':'blue'}
+			)],
+			'layout': go.Layout(
+				title='# Patients on Drug',
+				xaxis={'title': 'Drug Name'},
+				yaxis={'type': 'log', 'title': '# Patients'},
+				margin={'l': 70, 'b': 70, 't': 40, 'r': 10},
+				paper_bgcolor=colors_light['background'],
+				plot_bgcolor=colors_light['background'],
+				hovermode='closest'
+				#legend={'x': 0, 'y': 1},
+			)
+		}
 
 @app.callback(
-    dash.dependencies.Output('generic-information', 'children'),
-    [dash.dependencies.Input('generic-selector', 'value')])
+	dash.dependencies.Output('generic-information', 'children'),
+	[dash.dependencies.Input('generic-selector', 'value')])
 def generic_drug_table(value):
 	df_generic = df_classify[df_classify['generic_name'] == value]
 	df_sub = df_generic[['generic_name', 'total_manuf', 'increase_manuf', 'num_act_ingredients', 'nti_index']]
@@ -283,22 +288,8 @@ def generic_drug_table(value):
 	if value is not None:
 		return html.Div(children=[
 			generate_table(df_sub)])
-		# return html.Div(children=[
-  #               html.Table(
-  #                   # Header
-  #                   [html.Tr([html.Th(col) for col in disp_columns])] +
-  #                   # Body
-  #                   [html.Tr([
-  #                       html.Td(wl.df[wl.df.index==idx][col]) for col in df_columns
-  #                   ]) for idx in indexes]
-  #               ),
 
-  #           ]
-  #       )
-# 'Total # Manufacturers', 'Increase in Manufacturers (per year)',
-#	 'Number of Active Ingredients', 'Narrow Therapeutic Index'
-		# 	generate_table(df_sub)
-		
+
 # def update_figure(selected_generic):
 #     filtered_df = df[df.drug_generic_name == selected_generic]
 #     traces = []
@@ -329,5 +320,5 @@ def generic_drug_table(value):
 #     }
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+	app.run_server(debug=True)
 

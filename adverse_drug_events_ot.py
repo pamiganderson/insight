@@ -24,7 +24,7 @@ from create_database import query_db_adverse_events
 
 # Find data frame of adverse events in 2014
 df_ad = query_db_adverse_events()
-df_ad['serious_count'] = 10*df_ad['serious_count']
+df_ad['serious_count'] = df_ad['serious_count']
 
 # Clean adverse events table
 df_ad_clean = clean_ad_ev_table(df_ad)
@@ -92,25 +92,14 @@ df_merge_class = df_merge_class.fillna(0)
 
 p = np.isinf(df_merge_class).any()
 df_merge_class['diff_avg_spending_per_dose'][np.isinf(df_merge_class['diff_avg_spending_per_dose'])] = 0
-df_merge_class_2 = df_merge_class[df_merge_class['risk_class'] == 0]
+df_merge_class_2 = df_merge_class[(df_merge_class['risk_class'] == 0)]
+df_merge_class_d = df_merge_class[(df_merge_class['total_beneficiaries'] > 100)]
 
 # add this back in 'diff_avg_spending_per_dose'
 
-df_merge_class_d = df_merge_class.drop(index=['0.9 % sodium chloride',
-                                              'aa 5 %/calcium/lytes/dext 15 %',
-                                              'abacavir sulfate/lamivudine',
-                                              'abacavir/dolutegravir/lamivudi',
-                                              'acetaminophen/caff/dihydrocod',
-                                              'acetic acid/aluminum acetate',
-                                              'acyclovir/hydrocortisone',
-                                              'adalimumab',
-                                              'adapalene/benzoyl peroxide',
-                                              'ado-trastuzumab emtansine',
-                                              'agalsidase beta',
-                                              'alendronate sodium/vitamin d3'])
 
 # Create Model
-compare_classifiers(df_merge_class_d[['total_beneficiaries', 'total_claims',
+compare_classifiers(df_merge_class[['total_beneficiaries', 'total_claims',
                                     'total_dosage_units','total_spending',
                                     'dose_price_range',
                                     'total_bene_range', 'total_claim_range',
@@ -118,7 +107,7 @@ compare_classifiers(df_merge_class_d[['total_beneficiaries', 'total_claims',
                                     'diff_spending', 'diff_dosage', 'diff_claims', 
                                     'diff_bene', 'increase_manuf', 'total_manuf',
                                     'diff_avg_spending_per_dose', 'nti_index',
-                                    'num_act_ingredients']],df_merge_class_d[['classify_risk']])
+                                    'num_act_ingredients']],df_merge_class[['classify_risk']])
 
 # Random Forest Model
 df_features = df_merge_class[['total_beneficiaries', 'total_claims',

@@ -163,7 +163,8 @@ def feature_and_generic_label(df):
     df_piv_merge_generic_risk = pd.pivot_table(df_na, index = ['generic_name',
                                                                'risk_class'],
         values = ['serious_count', 'total_beneficiaries', 'total_claims',
-                  'total_dosage_units', 'total_spending'],
+                  'total_dosage_units', 'total_spending', 'serious_count_pre',
+                  'serious_count_pre_pre', 'serious_range'],
                   aggfunc = np.sum)
     df_piv_merge_generic_risk_mean = pd.pivot_table(df, index = ['generic_name',
                                                                'risk_class'],
@@ -198,47 +199,67 @@ def find_num_manuf_and_change(df_spending_pre, df_spending_post):
     return df_manufacturer
 
 ########## CLASSIFICATION ##########
-def classify_generic_risk(df_piv_merge_generic_risk):    
+def classify_generic_risk(df_piv_merge_generic_risk):   
+    df_piv_merge_generic_risk = df_piv_merge_generic_risk.sort_values(by='generic_name')
     p_val_chi_sq = []
+    chi_sq_val = []
     index_list = []
     for i, val in enumerate(df_piv_merge_generic_risk['generic_name'][:-1]):
         if val == df_piv_merge_generic_risk['generic_name'][i+1]:
             # create contingency table
             # first entry will be for brand, second will be for generic
-            #if df_piv_merge_generic_risk.iloc[i]['risk_class'] == 1
-            obs = [[df_piv_merge_generic_risk.iloc[i]['serious_count'], 
-                   df_piv_merge_generic_risk.iloc[i]['total_beneficiaries']],
-                    [df_piv_merge_generic_risk.iloc[i+1]['serious_count'],
-                    df_piv_merge_generic_risk.iloc[i+1]['total_beneficiaries']]]
-            if (((obs[0][0] + obs[1][0]) == 0.0) | (obs[0][1] == 0) | (obs[1][1] == 0)):
+            ad_ev_1 = df_piv_merge_generic_risk.iloc[i]['serious_count']
+            tot_1 = df_piv_merge_generic_risk.iloc[i]['total_beneficiaries']
+            ad_ev_2 = df_piv_merge_generic_risk.iloc[i+1]['serious_count']
+            tot_2 = df_piv_merge_generic_risk.iloc[i+1]['total_beneficiaries']
+            
+            if df_piv_merge_generic_risk.iloc[i]['risk_class'] == -1:
+                # obs matriox [[generic_adr, generic_non_adr], [brand_adr brand_non_adr] ]
+                obs = [[ad_ev_1, (tot_1-ad_ev_1)],
+                        [ad_ev_2, (tot_2-ad_ev_2)]]
+                
+                row_1 = (ad_ev_1+(tot_1-ad_ev_1))
+                row_2 = (ad_ev_2+(tot_2-ad_ev_2))
+                col_1 = ad_ev_1 + ad_ev_2
+                col_2 = (tot_1-ad_ev_1) + (tot_1-ad_ev_1)
+                tot = ad_ev_1 + ad_ev_2 + (tot_1-ad_ev_2) + (tot_2-ad_ev_1)
+                # Calculate expected matrix
+                exp_obs = [[(row_1*col_1)/tot, (row_2*col_1)/tot], [(row_1*col_2)/tot, (row_2*col_2)/tot]]
+
+            else:
+                # obs matriox [[[generic_adr, generic_non_adr], brand_adr brand_non_adr]]
+                obs = [[ad_ev_2, (tot_2-ad_ev_2)],
+                        [ad_ev_1, (tot_1-ad_ev_1)]]
+                row_1 = (ad_ev_2+(tot_2-ad_ev_2))
+                row_2 = (ad_ev_1+(tot_1-ad_ev_1))
+                col_1 = ad_ev_2 + ad_ev_1
+                col_2 = (tot_2-ad_ev_2) + (tot_1-ad_ev_1)
+                tot = ad_ev_1 + ad_ev_2 + (tot_1-ad_ev_2) + (tot_2-ad_ev_1)
+                # Calculate expected matrix
+                exp_obs = [[(row_1*col_1)/tot, (row_2*col_1)/tot], [(row_1*col_2)/tot, (row_2*col_2)/tot]]
+                
+            if (((obs[0][0] + obs[1][0]) == 0.0) | (obs[0][1] <= 0) | (obs[1][1] <= 0)):
                 p_val_chi_sq.append(0)
+                chi_sq_val.append(0)
                 index_list.append(i)
             else:
                 chi2, p, dof, expected = chi2_contingency(obs)
-                # Check if first entry is a generic (-1) and then if the risk the ratio is higher, generic is high risk
-                if (df_piv_merge_generic_risk.iloc[i]['risk_class'] == -1):
-                    if (obs[0][0]/obs[1][0] > obs[0][1]/obs[1][1]):
-                        p_val_chi_sq.append(-1*p)
-                        index_list.append(i)
-                    else:
-                        p_val_chi_sq.append(p)
-                        index_list.append(i)
-                # Check if first entry is a brand (1) and then if the risk the ratio is higher, generic is high risk
-                elif (df_piv_merge_generic_risk.iloc[i]['risk_class'] == 1):
-                    # the   
-                    if (obs[0][0]/obs[1][0] > obs[0][1]/obs[1][1]):
-                        p_val_chi_sq.append(p)
-                        index_list.append(i)
-                    else:
-                        p_val_chi_sq.append(-1*p)
-                        index_list.append(i)
+                if obs[0][0] > exp_obs[0][0]:
+                    p_val_chi_sq.append(p)
+                else:
+                    p_val_chi_sq.append(1+p)
+                chi_sq_val.append(chi2)
+                index_list.append(i)
         else:
             p_val_chi_sq.append(0)
+            chi_sq_val.append(0)
             index_list.append(i)
     
     p_val_chi_sq.append(0)
+    chi_sq_val.append(0)
 
     df_piv_merge_generic_risk['p_val_chisq'] = pd.Series(p_val_chi_sq)
+    df_piv_merge_generic_risk['chi_sq_val'] = pd.Series(chi_sq_val)
     #series_max_min = df_piv_merge_generic_risk['risk_class'].multiply(df_piv_merge_generic_risk['min_cost_per_dose'])
     risk_boolean = df_piv_merge_generic_risk[['generic_name','risk_class']]
     df_both_contain = pd.pivot_table(df_piv_merge_generic_risk, index='generic_name',
@@ -289,7 +310,8 @@ def classify_generic_risk(df_piv_merge_generic_risk):
                                                 'dose_price_range',
                                                 'total_bene_range', 'total_claim_range',
                                                 'total_dosage_range', 'total_spending_range',
-                                                'serious_count'],
+                                                'serious_count', 'serious_count_pre',
+                                                'serious_count_pre_pre', 'serious_range'],
                                       aggfunc = np.sum)
     df_class_generic_mean = pd.pivot_table(df_piv_merge_generic_risk, index = ['generic_name'],
                                       values = ['diff_spending', 'diff_dosage', 'diff_claims', 
@@ -302,8 +324,8 @@ def classify_generic_risk(df_piv_merge_generic_risk):
 #                                            aggfunc = max)
 #    df_class_generic['manufacturer'] = df_class_generic_manuf['manufacturer']
     classify_risk = df_class_generic['p_val_chisq']
-    p_val_cutoff = 0
-    classify_risk[classify_risk>=p_val_cutoff]=1
+    p_val_cutoff = 0.1
+    classify_risk[(classify_risk>=p_val_cutoff) | (classify_risk ==0)]=1
     classify_risk[classify_risk<p_val_cutoff]=0
 
     df_class_generic['classify_risk'] = classify_risk

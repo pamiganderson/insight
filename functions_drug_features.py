@@ -45,6 +45,9 @@ def find_num_act_ingredients(df_merge_class):
     df_piv = df_piv.set_index('DrugName')
     df_merge_ingre = df_merge_class.merge(df_piv, left_index=True,
                                           right_index=True, how='left')
+    num_act_ingre = df_merge_ingre['num_act_ingredients']
+    num_act_ingre = num_act_ingre.fillna(1)
+    df_merge_ingre['num_act_ingredients'] = num_act_ingre
     return df_merge_ingre
 #import matplotlib.pyplot as plt
 #
