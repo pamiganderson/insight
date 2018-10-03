@@ -7,6 +7,7 @@ from dash.dependencies import Input, Output
 # Show table from database
 import time
 import pandas as pd
+import numpy as np
 import plotly.graph_objs as go
 
 
@@ -65,7 +66,7 @@ app.layout = html.Div(style={'backgroundColor': colors_light['background']}, chi
 	]),
 
 	html.Div([
-		html.Img(src='/assets/pill_background_6.jpg',  style={'width': '100%', 'height': '10%'}),
+		html.Img(src='/assets/pill_background_6.jpg',  style={'width': '100%', 'height': '100%'}),
 		html.Div(
 			children = 'Assessing Generic Drug Risk',
 			style = {
@@ -81,7 +82,7 @@ app.layout = html.Div(style={'backgroundColor': colors_light['background']}, chi
 
 	# Select generic Dropdown
 	html.Div([
-		html.Div('Select Generic Drug', className='three columns', style={'position': 'absolute', 'left': '15%', 'top': '44%'}),
+		html.Div('Select Generic Drug', className='three columns', style={'position': 'absolute', 'left': '30%', 'top': '40%'}),
 		html.Div(dcc.Dropdown(id='generic-selector',
 							  options=onLoad_generic_options()),
 				 className='one columns',
@@ -136,15 +137,27 @@ def model_risk_value(value):
 	message = list()
 	if value is not None:
 		df_classify_generic = df_classify[df_classify['generic_name'] == value]
-		p = df_classify_generic['classify_risk']
-		risk = 'GENERIC POSES HIGH RISK' if p.all() == 0 else 'GENERIC POSES LOW RISK'
-		# color_output = 'red' if p.all() == 0 else '#75a0c7'
-		if p.all() == 0:
-			color_output = 'red'
-			text_color = colors_light['background']
-		else:
+		risk_class = df_classify_generic['classify_risk']
+		type_count = df_classify_generic['risk_count']
+		type_class = df_classify_generic['risk_class']
+		if type_count.all() == 1 & type_class.all() == 1:
+			risk = 'ONLY BRAND AVAILABLE'
 			color_output = '#1e2832'
 			text_color = colors_light['background']
+		elif type_count.all() == 1 & type_class.all() == -1:
+			risk = 'ONLY GENERIC AVAILABLE'
+			color_output = '#1e2832'
+			text_color = colors_light['background']
+		else:
+			if risk_class.all() == 1:
+				risk = 'GENERIC POSES LOW RISK'
+				color_output = '#1e2832'
+				text_color = colors_light['background']
+			else:
+				risk = 'GENERIC POSES HIGH RISK'
+				color_output = 'red'
+				text_color = colors_light['background']
+
 		return html.H3('{}'.format(risk), style={'textAlign' : 'center', 'backgroundColor' : color_output, 
 			'color': text_color, 'width' : '50%', 'position' : 'relative', 'left': '25%'})
 
@@ -178,7 +191,6 @@ def model_risk_value(value):
 	[dash.dependencies.Input('generic-selector', 'value')])
 def generic_adr_table(value):
 	df_generic = df_patient_react[df_patient_react['drug_generic_name'] == value]
-	print(df_generic.columns.values)
 	if df_generic.empty:
 		txt_disp = 'No Adverse Drug Reactions Reported Last 2 Years'
 		df_sub = pd.DataFrame()
@@ -192,7 +204,8 @@ def generic_adr_table(value):
 				html.H5(
 					children = txt_disp,
 					style = {
-						'color' : colors_light['text']
+						'color' : colors_light['text'],
+						'position': 'relative', 'left' : '0%'
 					}),
 				html.Div(generate_table(df_sub), style={'position' : 'relative', 
 					'float': 'center', 'position': 'relative', 'left' : '42%'})])
@@ -204,13 +217,29 @@ def generic_adr_table(value):
 def update_output(value):
 	filtered_df = df[df['generic_name'] == value]
 	price_min_max = filtered_df['min_price_per_dose']
+	
+	filter_colors = filtered_df['risk_class'].copy()
+	filter_colors[filter_colors == -1] = 'rgb(0,0,255)'
+	filter_colors[filter_colors == 1] = 'rgb(255,0,0)'
+
+	filter_colors_leg = filtered_df['risk_class'].copy()
+	filter_colors_leg[filter_colors_leg == -1] = 'Generic'
+	filter_colors_leg[filter_colors_leg == 1] = 'Brand'
+
 	if value is not None:
 		return {
 			'data': [go.Bar(
 				x=filtered_df['brand_name'],
 				y=filtered_df['max_price_per_dose'],
-				opacity=0.7,
-				marker={'color':'green'}
+				opacity=0.9,
+				marker=dict(color=filter_colors.tolist()),
+				text=filter_colors_leg.tolist(),
+				textposition = 'auto',
+				textfont=dict(
+					family='sans serif',
+					size=14,
+					color='#ffffff'
+				)
 			)],
 			'layout': go.Layout(
 				title='Price Comparison',
@@ -230,13 +259,31 @@ def update_output(value):
 	[dash.dependencies.Input('generic-selector', 'value')])
 def update_output(value):
 	filtered_df = df[df['generic_name'] == value]
+	
+	filter_colors = filtered_df['risk_class'].copy()
+	filter_colors[filter_colors == -1] = 'rgb(0,0,255)'
+	filter_colors[filter_colors == 1] = 'rgb(255,0,0)'
+
+	filter_colors_leg = filtered_df['risk_class'].copy()
+	filter_colors_leg[filter_colors_leg == -1] = 'Generic'
+	filter_colors_leg[filter_colors_leg == 1] = 'Brand'
+
 	if value is not None:
 		return {
 			'data': [go.Bar(
 				x=filtered_df['brand_name'],
 				y=filtered_df['total_beneficiaries'],
-				opacity=0.7,
-				marker={'color':'blue'}
+				opacity=0.9,
+				marker=dict(color=filter_colors.tolist()),
+				text=filter_colors_leg.tolist(),
+				textposition = 'auto',
+				textfont=dict(
+					family='sans serif',
+					size=14,
+					color='#ffffff'
+				)
+				#name= dict(name=filter_colors_leg.tolist())
+				#marker={'color':'blue'}
 			)],
 			'layout': go.Layout(
 				title='# Patients on Drug',
@@ -245,8 +292,8 @@ def update_output(value):
 				margin={'l': 70, 'b': 70, 't': 40, 'r': 10},
 				paper_bgcolor=colors_light['background'],
 				plot_bgcolor=colors_light['background'],
-				hovermode='closest'
-				#legend={'x': 0, 'y': 1},
+				hovermode='closest',
+				# legend={'x': 0, 'y': 1},
 			)
 		}
 

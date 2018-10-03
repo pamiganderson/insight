@@ -13,7 +13,7 @@ import json
 import operator
 
 path = '/Users/pamelaanderson/Documents/Insight/fda_drug_recall/'
-year = '2013'
+year = '2012'
 q = 'Q4'
 
 def load_adverse_events(path, year, q):
@@ -103,9 +103,12 @@ def extract_drug_features(df_adverse_ev):
 def extract_source_info(df_adverse_ev):
     qual_list = []
     for i in range(0,len(df_adverse_ev)):
-        col_names = list(df_adverse_ev.iloc[i]['primarysource'].keys())
-        if 'qualification' in col_names:
-            qual_list.append(pd.to_numeric(df_adverse_ev.iloc[i]['primarysource']['qualification']))
+        if df_adverse_ev.iloc[i]['primarysource'] is not None:
+            col_names = list(df_adverse_ev.iloc[i]['primarysource'].keys())
+            if 'qualification' in col_names:
+                qual_list.append(pd.to_numeric(df_adverse_ev.iloc[i]['primarysource']['qualification']))
+            else:
+                qual_list.append(np.nan)
         else:
             qual_list.append(np.nan)
     df_adverse_ev['source'] = qual_list

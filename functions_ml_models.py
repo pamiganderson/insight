@@ -37,6 +37,10 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report, confusion_matrix
 from functions_plotting import plot_feature_importance
 from sklearn.ensemble import RandomForestRegressor as rfr
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import precision_score
+from imblearn.over_sampling import SMOTE, ADASYN
 
 
 def compare_classifiers(df_features, resp_var):
@@ -91,6 +95,8 @@ def random_forest_model(df_features, resp_var):
     
     roc_dict = {}
     roc_list = []
+    recall_list = []
+    precision_list = []
     # Prepare data
     for i in range(0,25):
         seed = i
@@ -101,6 +107,8 @@ def random_forest_model(df_features, resp_var):
                                                             stratify=y,
                                                             random_state = seed)
         
+        X_train_res, y_train_res = SMOTE(kind='borderline1').fit_sample(X_train, y_train)
+
         # Random Forest 
         rf = RandomForestClassifier(class_weight = 'balanced', criterion = 'entropy')
         # to see hyperparameters names: rf.get_params()
@@ -109,15 +117,20 @@ def random_forest_model(df_features, resp_var):
         
         grid_rf = GridSearchCV(estimator = rf, 
                                param_grid = params_rf, 
-                               cv=5, scoring = 'precision_score')
-        grid_rf.fit(X_train, y_train)
-        
-        # Find best model parameters
+                               cv=5, scoring = 'recall_weighted')
+        #grid_rf.fit(X_train, y_train)
+        grid_rf.fit(X_train_res, y_train_res)
         rf_best_model = grid_rf.best_estimator_
         y_pred = rf_best_model.predict(X_test)
-        classification_report(y_test, y_pred)
+        class_report = classification_report(y_test, y_pred)
         confusion_matrix(y_test, y_pred)
-    
+        
+        # Find best model parameters
+#        rf_best_model = grid_rf.best_estimator_
+#        y_pred = rf_best_model.predict(X_test)
+#        class_report = classification_report(y_test, y_pred)
+#        confusion_matrix(y_test, y_pred)
+#    
         #plot important features
         importances_rf = pd.Series(rf_best_model.feature_importances_,
                                    index = X.columns)
@@ -131,7 +144,10 @@ def random_forest_model(df_features, resp_var):
                        'best_model' : grid_rf.best_estimator_,
                        'best_roc_score' : grid_rf.best_score_
                        }
+        roc_score = roc_auc_score(y_test, y_pred)
         roc_dict[i] = dict_results
-        roc_list.append(grid_rf.best_score_)
+        roc_list.append(roc_score)
+        recall_list.append(recall_score(y_test, y_pred))
+        precision_list.append(precision_score(y_test, y_pred))
         
     return dict_results

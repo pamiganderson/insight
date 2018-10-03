@@ -1,4 +1,4 @@
-en#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Tue Sep 25 22:09:41 2018
@@ -18,7 +18,7 @@ from functions_medicare_drug_costs import (read_spending_csv, format_str_and_num
                                            create_ad_df_by_brand, merge_spending_df_tot_and_ad_df,
                                            classify_generic_risk, feature_and_generic_label,
                                            find_num_manuf_and_change, find_spending_change,
-                                           merge_spending_diff)
+                                           merge_spending_diff, label_brand_generic)
 from functions_ml_models import compare_classifiers, random_forest_model
 from functions_data_cleaning import clean_ad_ev_table
 from functions_drug_features import find_num_act_ingredients, find_nti_drugs
@@ -75,6 +75,10 @@ df_ad_brand_pre_merge['serious_range'] = df_ad_brand_pre_merge['serious_count_pr
 # Find 2014 medicare spending by brand name
 path = '/Users/pamelaanderson/Documents/Insight/spending/'
 file_name = 'medicare_part_d_drug_spending.csv'
+year = '2014'
+df_spending_2014 = read_spending_csv(path, file_name, year)
+df_spending_2014 = df_spending_2014.reset_index(drop=True)
+df_spending_2014 = format_str_and_numerics(df_spending_2014)
 year = '2013'
 df_spending_2013 = read_spending_csv(path, file_name, year)
 df_spending_2013 = df_spending_2013.reset_index(drop=True)
@@ -90,7 +94,7 @@ df_manuf_per_generic = find_num_manuf_and_change(df_spending_2012, df_spending_2
 
 df_spending_difference = find_spending_change(df_spending_2012, df_spending_2013)
 
-df_spending_tot = merge_spending_diff(df_spending_2013, df_spending_difference)
+df_spending_tot = merge_spending_diff(df_spending_2014, df_spending_2013, df_spending_difference)
 
 ########## MERGE SPENDING WITH AD EV BY BRAND ##########
 # Merge spending with over 2 manufacturers with adverse event by brand
@@ -109,10 +113,13 @@ df_ad_brand_total = df_ad_brand_total.drop(['drug_generic_name_x',
 #df_ad_brand_total.rename(columns={'serious_count_x': 'serious_count',
 #                                  'serious_count_y':'serious_count_pre'}, inplace=True)
 
+# Sumarize the spending information from CMS
 df_merge_ad_spending = merge_spending_df_tot_and_ad_df(df_spending_tot,
                                                        df_ad_brand_total)
+# Find generic/brand flags for each drug in the CMS database
+df_merge_ad_spending_label = label_brand_generic(df_merge_ad_spending)
 
-df_features_generic_class = feature_and_generic_label(df_merge_ad_spending)
+df_features_generic_class = feature_and_generic_label(df_merge_ad_spending_label)
 
 # Classify generic vs. brand
 df_merge_class = classify_generic_risk(df_features_generic_class)
@@ -162,9 +169,10 @@ compare_classifiers(df_merge_class[['total_beneficiaries', 'total_claims',
 
 # Random Forest Model
 df_features = df_merge_class[['total_beneficiaries', 'total_claims',
-                                    'total_dosage_units','total_spending',
-                                    #'dose_price_range',
-                                    #'total_bene_range', 
+                                    'total_dosage_units',
+                                    'total_spending',
+                                    'dose_price_range',
+                                    'total_bene_range', 
                                     'total_spending_range',
                                     'diff_spending', 'diff_dosage', 'diff_claims', 
                                     'diff_bene', 'increase_manuf', 'total_manuf',
@@ -190,4 +198,18 @@ obs = np.array([[60, 293329], [65, 65]])
 chi2, p, dof, expected = chi2_contingency(obs)
 
 
+# 
+df_merge_classify_final = df_merge_class.reset_index()
+df_merge_classify_final.rename(columns={'index': 'generic_name'}, inplace=True)
 
+digoxin_drop = [746, 747]
+
+## Data to pickle
+df_merge_ad_spending_label_save = df_merge_ad_spending_label
+#df_merge_ad_spending_label_save = df_merge_ad_spending_label_save.drop(digoxin_drop)
+df_merge_classify_final = df_merge_classify_final.drop([0,1])
+df_patient_react = df_serious_clean_brand
+
+df_merge_classify_final.to_pickle('./df_merge_classify_final.pkl')
+df_serious_clean_brand.to_pickle('./df_patient_react.pkl')
+df_merge_ad_spending_label_save.to_pickle('./data/df_merge_ad_spending.pkl')

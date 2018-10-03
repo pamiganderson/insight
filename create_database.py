@@ -32,7 +32,7 @@ def create_graphing_table(df_merge_ad_spending):
     engine.dispose()
 
 def add_table_to_db(df, table_name):
-    table_name = 'df_adverse_ev_2013_q4_table'
+    table_name = 'df_adverse_ev_2012_q4_table'
     df = df_adverse_ev
     # Define a database name
     # Set postgres username
@@ -100,12 +100,13 @@ def query_db_ad_quarter():
     SUM(seriousnesslifethreatening) AS seriousnesslifethreatening_count,
     SUM(seriousnessother) AS seriousnessother_count,
     COUNT(patient_age) AS age_count
-    FROM df_adverse_events_2014 
-    WHERE patient_age BETWEEN 65 AND 110
+    FROM df_adverse_ev_2014_q1_table
     GROUP BY drug_brand_name, drug_generic_name, drug_manuf_name;
     """
-    df_ad = pd.read_sql_query(sql_query,con)
+    df_ad2 = pd.read_sql_query(sql_query,con)
     return df_ad
+
+#    WHERE patient_age BETWEEN 65 AND 110
 
 def query_db_ad_serious_quarter():
     dbname = 'fda_adverse_events'
@@ -117,9 +118,9 @@ def query_db_ad_serious_quarter():
     sql_query = """
     SELECT drug_brand_name, drug_generic_name, drug_manuf_name,
     COUNT(serious) AS serious_count
-    FROM df_adverse_ev_2013_q4_table
+    FROM df_adverse_ev_2013_q1_table
     WHERE patient_age BETWEEN 65 AND 110
     GROUP BY drug_brand_name, drug_generic_name, drug_manuf_name;
     """
-    df_ad = pd.read_sql_query(sql_query,con)
+    df_ad_2013_q1 = pd.read_sql_query(sql_query,con)
     return df_ad
