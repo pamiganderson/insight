@@ -6,61 +6,18 @@ from dash.dependencies import Input, Output
 
 # Show table from database
 import time
-#from sqlalchemy import create_engine
-#from sqlalchemy_utils import database_exists, create_database
-#import psycopg2
 import pandas as pd
 import plotly.graph_objs as go
 
 
 ########## QUERIES ##########
-# Define a database name (we're using a dataset on births, so we'll call it birth_db)
-# Set your postgres username
-# dbname = 'fda_adverse_events'
-# username = 'pami' # change this to your username
-
-### QUERYING THE DATABASE ###
-# Connect to make queries using psycopg2
-# con = None
-# con = psycopg2.connect(database = dbname, user = username)
-# query:
-# sql_query = """
-# SELECT *
-# FROM df_merge_classify_final;
-# """
-df_classify = pd.read_pickle("./data/df_merge_classify_final.pkl")
-
-# sql_query = """
-# SELECT *
-# FROM df_spending_adverse_total;
-# """
 df = pd.read_pickle("./data/df_merge_ad_spending.pkl")
-
-# sql_query = """
-# SELECT *
-# FROM df_patient_react_2013_table;
-# """
+df_classify = pd.read_pickle("./data/df_merge_classify_final.pkl")
 df_patient_react = pd.read_pickle("./data/df_patient_react.pkl")
-
-# def fetch_data(q):
-# 	result = pd.read_sql(
-# 		sql=q,
-# 		con=con
-# 	)
-# 	return result
 
 def get_generics():
 	'''Returns the list of generics that are stored in the database'''
-
-	# generic_query = (
-	# 	f'''
-	# 	SELECT DISTINCT(generic_name)
-	# 	FROM df_spending_adverse_total;
-	# 	'''
-	# )
-	# generics = fetch_data(generic_query)
-	generics = pd.read_pickle("./data/df_merge_ad_spending.pkl")
-	generics = generics['generic_name']
+	generics = df_classify['generic_name']
 	generics = list(generics.sort_values(ascending=True))
 	return generics
 
@@ -87,7 +44,6 @@ def generate_table(dataframe, max_rows=5):
 	)
 
 ########## DASH APP ##########
-#app = dash.Dash(name)
 app = dash.Dash(__name__)
 #app.css.append_css({"external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"})
 
@@ -109,7 +65,7 @@ app.layout = html.Div(style={'backgroundColor': colors_light['background']}, chi
 	]),
 
 	html.Div([
-		html.Img(src='/assets/pill_background.jpg',  style={'width': '100%', 'height': '100%'}),
+		html.Img(src='/assets/pill_background_6.jpg',  style={'width': '100%', 'height': '10%'}),
 		html.Div(
 			children = 'Assessing Generic Drug Risk',
 			style = {
@@ -125,21 +81,22 @@ app.layout = html.Div(style={'backgroundColor': colors_light['background']}, chi
 
 	# Select generic Dropdown
 	html.Div([
-		html.Div('Select Generic Drug', className='three columns', style={'position': 'absolute', 'left': 125, 'top': 235}),
+		html.Div('Select Generic Drug', className='three columns', style={'position': 'absolute', 'left': '15%', 'top': '44%'}),
 		html.Div(dcc.Dropdown(id='generic-selector',
 							  options=onLoad_generic_options()),
 				 className='one columns',
-				 style={'position': 'absolute', 'left': 250, 'top': 230, "width" : "50%"})
+				 style={'position': 'absolute', 'left': '25%', 'top': '43%', "width" : "50%"})
 	], className="row"),
 
 	# Risk output
 	html.Div(id='output-risk', className="row"),
+	html.Div(id='output-risk-text', className="row"),
 
 	# Blank spaces
 	html.Br(),
 
 	# Table wit Adverse events
-	html.Div(id='generic-adr', style={'position' : 'relative', 'left': '40%', 'width': '50%'}),
+	html.Div(id='generic-adr'), #style={'position' : 'relative', 'left': '45%', 'width': '50%'}
 
 	html.Br(),
 	html.Br(),
@@ -189,8 +146,32 @@ def model_risk_value(value):
 			color_output = '#1e2832'
 			text_color = colors_light['background']
 		return html.H3('{}'.format(risk), style={'textAlign' : 'center', 'backgroundColor' : color_output, 
-			'fontSize' : 30, 'color': text_color, 'width': '50%', 
-			'position': 'relative', 'left': '25%', "width" : "50%"})
+			'color': text_color, 'width' : '50%', 'position' : 'relative', 'left': '25%'})
+
+# Display text about generic risk
+@app.callback(
+	dash.dependencies.Output('output-risk-text', 'children'),
+	[dash.dependencies.Input('generic-selector', 'value')])
+def model_risk_value(value):
+	message = list()
+	if value is not None:
+		df_classify_generic = df_classify[df_classify['generic_name'] == value]
+		p = df_classify_generic['classify_risk']
+		# color_output = 'red' if p.all() == 0 else '#75a0c7'
+		if p.all() == 0:
+			color_output = 'red'
+			text_color = colors_light['text']
+			text_output_1 = 'This generic drug poses additional risks of adverse drug reactions'
+			text_output_2 = 'due to previous adverse events,\n number of manufacturers, and'
+			text_output_3 = 'spending information \n from the FDA and CMS.'
+		else:
+			text_output_1 = 'This generic drug does not pose additional risks of adverse drug'
+			text_output_2 = 'reactions and shows a minimal increase in adverse events.'
+			text_output_3 = ''
+			text_color = colors_light['text']
+		return (html.H6('{}'.format(text_output_1), style={'textAlign' : 'center'}),
+				html.H6('{}'.format(text_output_2), style={'textAlign' : 'center'}),
+				html.H6('{}'.format(text_output_3), style={'textAlign' : 'center'}))
 
 @app.callback(
 	dash.dependencies.Output('generic-adr', 'children'),
@@ -211,10 +192,10 @@ def generic_adr_table(value):
 				html.H5(
 					children = txt_disp,
 					style = {
-						'color' : colors_light['text'],
-						'position' : 'relative', 'width': '50%', 'textAlign' : 'center'
+						'color' : colors_light['text']
 					}),
-				generate_table(df_sub)]) #, style={'position' : 'relative', 'right': '70%'})
+				html.Div(generate_table(df_sub), style={'position' : 'relative', 
+					'float': 'center', 'position': 'relative', 'left' : '42%'})])
 
 # Display the price difference
 @app.callback(
@@ -241,15 +222,6 @@ def update_output(value):
 				#legend={'x': 0, 'y': 1},
 				hovermode='closest'
 			)
-			# 'layout': {
-			#     'plot_bgcolor': '#f4f5f8',
-			#     'paper_bgcolor': '#f4f5f8',
-			#     'opacity' : 0.7,
-			#     'height': 450,
-			#     'margin': {'l': 20, 'b': 30, 'r': 10, 't': 10},
-			#     'yaxis': {'title': 'Price ($)', 'type': 'linear'},
-			#     'xaxis': {'title' : 'Drug Name', 'showgrid': False}
-			# }
 		}
 
 # Display the number of patients on drug difference
