@@ -33,7 +33,7 @@ def onLoad_generic_options():
 
 
 ########## FUNCTIONS FOR TABLES AND GRAPHS ##########
-def generate_table(dataframe, max_rows=5):
+def generate_table(dataframe, max_rows=5, style_parameters=None):
 	return html.Table(
 		# Header
 		[html.Tr([html.Th(col) for col in dataframe.columns])] +
@@ -41,11 +41,12 @@ def generate_table(dataframe, max_rows=5):
 		# Body
 		[html.Tr([
 			html.Td(dataframe.iloc[i][col]) for col in dataframe.columns
-		], style={'textAlign': 'center'}) for i in range(min(len(dataframe), max_rows))]
+		], style=style_parameters) for i in range(min(len(dataframe), max_rows))]
 	)
 
 ########## DASH APP ##########
 app = dash.Dash(__name__)
+app.title = "Generics for Geriatrics"
 #app.css.append_css({"external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"})
 
 ## CUSTOM COLOR CONFIG ##
@@ -191,6 +192,8 @@ def model_risk_value(value):
 	[dash.dependencies.Input('generic-selector', 'value')])
 def generic_adr_table(value):
 	df_generic = df_patient_react[df_patient_react['drug_generic_name'] == value]
+	style_parameters = style={'width' : '50%', 'position' : 'relative', 
+								'float': 'center', 'position': 'relative', 'left' : '40%'}
 	if df_generic.empty:
 		txt_disp = 'No Adverse Drug Reactions Reported Last 2 Years'
 		df_sub = pd.DataFrame()
@@ -207,8 +210,7 @@ def generic_adr_table(value):
 						'color' : colors_light['text'],
 						'position': 'relative', 'left' : '0%'
 					}),
-				html.Div(generate_table(df_sub), style={'position' : 'relative', 
-					'float': 'center', 'position': 'relative', 'left' : '42%'})])
+				html.Div(generate_table(df_sub), style=style_parameters)])
 
 # Display the price difference
 @app.callback(
