@@ -7,6 +7,7 @@ Created on Mon Sep 24 16:18:39 2018
 """
 
 def clean_ad_ev_table(df):
+    """ Clean messy FDA data to correct drug brand and generic names based off of CMS data """
     df['drug_generic_name'] = df['drug_generic_name'].str.lower()
     df['drug_brand_name'] = df['drug_brand_name'].str.lower()
 

@@ -16,51 +16,32 @@ import psycopg2
 import pandas as pd
 import numpy as np
 
+def query_table_patient_reaction(table_name):
+    """ query the postgres sql database and create dataframe for patients
+    reactions to drugs """
+    sql_query = """
+    SELECT drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type,
+    COUNT(serious) AS serious_count
+    FROM %s
+    WHERE patient_age BETWEEN 65 AND 110
+    GROUP BY drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type;
+    """
+    sql_query_w_table = sql_query % (table_name)
+    df = pd.read_sql_query(sql_query_w_table,con)
+    return df
+
+# Name database and username
 dbname = 'fda_adverse_events'
 username = 'pami' # change this to your username
 
 con = None
 con = psycopg2.connect(database = dbname, user = username)
 
-# QUARTER 1 QUERY
-sql_query = """
-SELECT drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type,
-COUNT(serious) AS serious_count
-FROM df_adverse_ev_2013_q1_table
-WHERE patient_age BETWEEN 65 AND 110
-GROUP BY drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type;
-"""
-df_q1 = pd.read_sql_query(sql_query,con)
-
-# QUARTER 2 QUERY
-sql_query = """
-SELECT drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type,
-COUNT(serious) AS serious_count
-FROM df_adverse_ev_2013_q2_table
-WHERE patient_age BETWEEN 65 AND 110
-GROUP BY drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type;
-"""
-df_q2 = pd.read_sql_query(sql_query,con)
-
-# QUARTER 3 QUERY
-sql_query = """
-SELECT drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type,
-COUNT(serious) AS serious_count
-FROM df_adverse_ev_2013_q3_table
-WHERE patient_age BETWEEN 65 AND 110
-GROUP BY drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type;
-"""
-df_q3 = pd.read_sql_query(sql_query,con)
-
-# QUARTER 4 QUERY
-sql_query = """
-SELECT drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type,
-COUNT(serious) AS serious_count
-FROM df_adverse_ev_2013_q4_table
-WHERE patient_age BETWEEN 65 AND 110
-GROUP BY drug_brand_name, drug_generic_name, drug_manuf_name, patient_react_type;
-"""
-df_q4 = pd.read_sql_query(sql_query,con)
+# Query for the adverse drug reactions for 2013
+df_q1 = query_table_patient_reaction('df_adverse_ev_2013_q1_table')
+df_q2 = query_table_patient_reaction('df_adverse_ev_2013_q2_table')
+df_q3 = query_table_patient_reaction('df_adverse_ev_2013_q3_table')
+df_q4 = query_table_patient_reaction('df_adverse_ev_2013_q4_table')
 
 # Create pivot table for each entry on brand, generic and event
 df_q1 = pd.pivot_table(df_q1, index=['drug_brand_name', 'drug_generic_name', 'drug_manuf_name', 
@@ -99,7 +80,3 @@ df_serious_clean_brand = pd.pivot_table(df_serious_clean, index=['drug_brand_nam
                                                                  'patient_react_type'],
                                         values = 0, aggfunc=np.sum)
 df_serious_clean_brand = df_serious_clean_brand.reset_index()
-
-generic_drug = 'aripiprazole'
-df_filter = df_serious_clean_brand[df_serious_clean_brand['drug_generic_name'] == generic_drug]
-

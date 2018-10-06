@@ -171,44 +171,44 @@ def model_risk_value(value):
 	if value is not None:
 		df_classify_generic = df_classify[df_classify['generic_name'] == value]
 		p = df_classify_generic['classify_risk']
+		type_count = list(df_classify_generic['risk_count'])
 		# color_output = 'red' if p.all() == 0 else '#75a0c7'
-		if p.all() == 0:
-			color_output = 'red'
-			text_color = colors_light['text']
-			text_output_1 = 'This generic drug poses additional risks of adverse drug reactions'
-			text_output_2 = 'due to previous adverse events,\n number of manufacturers, and'
-			text_output_3 = 'spending information \n from the FDA and CMS.'
-		else:
-			text_output_1 = 'This generic drug does not pose additional risks of adverse drug'
-			text_output_2 = 'reactions and shows a minimal increase in adverse events.'
-			text_output_3 = ''
-			text_color = colors_light['text']
-		return (html.H6('{}'.format(text_output_1), style={'textAlign' : 'center'}),
-				html.H6('{}'.format(text_output_2), style={'textAlign' : 'center'}),
-				html.H6('{}'.format(text_output_3), style={'textAlign' : 'center'}))
+		if type_count[0] > 1: 
+			if p.all() == 0:
+				text_color = colors_light['text']
+				text_output_1 = 'This generic drug poses additional risks of adverse drug reactions'
+				text_output_2 = 'due to previous adverse events, number of manufacturers, and'
+				text_output_3 = 'spending information from the FDA and CMS.'
+			else:
+				text_output_1 = 'This generic drug does not pose additional risks of adverse drug'
+				text_output_2 = 'reactions and shows a minimal increase in adverse events.'
+				text_output_3 = ''
+				text_color = colors_light['text']
+			return (html.H6('{}'.format(text_output_1), style={'textAlign' : 'center'}),
+					html.H6('{}'.format(text_output_2), style={'textAlign' : 'center'}),
+					html.H6('{}'.format(text_output_3), style={'textAlign' : 'center'}))
 
 @app.callback(
 	dash.dependencies.Output('generic-adr', 'children'),
 	[dash.dependencies.Input('generic-selector', 'value')])
 def generic_adr_table(value):
 	df_generic = df_patient_react[df_patient_react['drug_generic_name'] == value]
-	style_parameters = style={'width' : '50%', 'position' : 'relative', 
-								'float': 'center', 'position': 'relative', 'left' : '40%'}
+	style_parameters = style={'float': 'center', 'width': '50%', 'position':'relative',
+	'left' : '40%', 'textAlign' : 'center'}
 	if df_generic.empty:
 		txt_disp = 'No Adverse Drug Reactions Reported Last 2 Years'
 		df_sub = pd.DataFrame()
 	else:
-		txt_disp = 'Adverse Drug Reactions'
+		txt_disp = ''
 		df_generic = df_generic.sort_values(by='reaction', ascending=False)
 		df_sub = df_generic[['patient_react_type']]
-		df_sub.rename(columns={'patient_react_type' : 'Top Five Most Common'}, inplace=True)
+		df_sub.rename(columns={'patient_react_type' : 'Top Five Adverse Drug Reactions'}, inplace=True)
 	if value is not None:
 		return html.Div(children=[
 				html.H5(
 					children = txt_disp,
 					style = {
 						'color' : colors_light['text'],
-						'position': 'relative', 'left' : '0%'
 					}),
 				html.Div(generate_table(df_sub), style=style_parameters)])
 

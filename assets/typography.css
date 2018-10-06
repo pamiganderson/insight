@@ -339,19 +339,22 @@ li {
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 table {
   border-collapse: collapse;
-  justify-content: center
+  justify-content: center;
 }
 th,
 td {
   padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px solid #E1E1E1;}
+  text-align: center;
+  border-bottom: 1px solid #E1E1E1;
+  justify-content: center;}
 th:first-child,
 td:first-child {
-  padding-left: 0; }
+  padding-left: 0;
+  justify-content: center;}
 th:last-child,
 td:last-child {
-  padding-right: 0; }
+  padding-right: 0;
+  justify-content: center;}
 
 
 /* Spacing

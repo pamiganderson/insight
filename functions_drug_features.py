@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 def find_nti_drugs(df_merge_class):
+    """ Determine if drugs are narrow therapeutic index """
     nti_list = ['carbamazepine',
                 'cyclosporine',
                 'digoxin',
@@ -30,6 +31,7 @@ def find_nti_drugs(df_merge_class):
     return df_merge_class
 
 def find_num_act_ingredients(df_merge_class):
+    """ Find the number of active ingredients in drugs """
     path = '/Users/pamelaanderson/Documents/Insight/spending/'
     file_name = 'products.csv'     
     df = pd.read_csv(path+file_name)
@@ -49,8 +51,3 @@ def find_num_act_ingredients(df_merge_class):
     num_act_ingre = num_act_ingre.fillna(1)
     df_merge_ingre['num_act_ingredients'] = num_act_ingre
     return df_merge_ingre
-#import matplotlib.pyplot as plt
-#
-#plt.figure()
-#df_merge_class.plot(kind='scatter', x='increase_manuf', y='total_manuf')
-    

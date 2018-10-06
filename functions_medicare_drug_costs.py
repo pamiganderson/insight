@@ -110,11 +110,11 @@ def merge_spending_df_tot_and_ad_df(df_spending_2014, df_piv_adv_2014_brand):
                                        aggfunc = np.sum)
     df_spending_brand_mean = pd.pivot_table(df_spending_2014, index = ['brand_name', 
                                                                   'generic_name'],
-                                       values = ['diff_spending', 
-                                                 'diff_dosage', 
-                                                 'diff_claims', 
-                                                 'diff_bene',
-                                                 'diff_avg_spending_per_dose'],
+                                       values = ['percent_change_spending', 
+                                                 'percent_change_dosage', 
+                                                 'percent_change_claims', 
+                                                 'percent_change_bene',
+                                                 'percent_change_avg_spending_per_dose'],
                                        aggfunc = np.nanmean)
     df_spending_brand = df_spending_brand.merge(df_spending_brand_mean,
                                                 left_index=True,
@@ -190,8 +190,8 @@ def feature_and_generic_label(df):
                   aggfunc = np.sum)
     df_piv_merge_generic_risk_mean = pd.pivot_table(df, index = ['generic_name',
                                                                'risk_class'],
-        values = ['diff_spending', 'diff_dosage', 'diff_claims', 
-                  'diff_bene', 'diff_avg_spending_per_dose', 'risk_count'],
+        values = ['percent_change_spending', 'percent_change_dosage', 'percent_change_claims', 
+                  'percent_change_bene', 'percent_change_avg_spending_per_dose', 'risk_count'],
                   aggfunc = np.nanmean)
     df_piv_merge_generic_risk = df_piv_merge_generic_risk.merge(df_piv_merge_generic_risk_mean,
                                                                 left_index=True,
@@ -262,15 +262,15 @@ def classify_generic_risk(df_piv_merge_generic_risk):
                 exp_obs = [[(row_1*col_1)/tot, (row_2*col_1)/tot], [(row_1*col_2)/tot, (row_2*col_2)/tot]]
                 
             if (((obs[0][0] + obs[1][0]) == 0.0) | (obs[0][1] <= 0) | (obs[1][1] <= 0)):
-                p_val_chi_sq.append(0)
-                chi_sq_val.append(0)
+                p_val_chi_sq.append(1)
+                chi_sq_val.append(1)
                 index_list.append(i)
             else:
                 chi2, p, dof, expected = chi2_contingency(obs)
                 if obs[0][0] > exp_obs[0][0]:
                     p_val_chi_sq.append(p)
                 else:
-                    p_val_chi_sq.append(1+p)
+                    p_val_chi_sq.append(p)
                 chi_sq_val.append(chi2)
                 index_list.append(i)
         else:
@@ -334,27 +334,29 @@ def classify_generic_risk(df_piv_merge_generic_risk):
                                                 'total_bene_range', 'total_claim_range',
                                                 'total_dosage_range', 'total_spending_range',
                                                 'serious_count', 'serious_count_pre',
-                                                'serious_count_pre_pre', 'serious_range'],
+                                                'serious_count_pre_pre', 'serious_range', 'chi_sq_val'],
                                       aggfunc = np.sum)
     df_class_generic_mean = pd.pivot_table(df_piv_merge_generic_risk, index = ['generic_name'],
-                                      values = ['diff_spending', 'diff_dosage', 'diff_claims', 
-                                                'diff_bene', 'diff_avg_spending_per_dose'],
+                                      values = ['percent_change_spending', 'percent_change_dosage', 'percent_change_claims', 
+                                                'percent_change_bene', 'percent_change_avg_spending_per_dose'],
                                       aggfunc = np.sum)
 
     df_class_generic = df_class_generic.merge(df_class_generic_mean, right_index=True,
                                               left_index=True, how='inner')
     classify_risk = df_class_generic['p_val_chisq']
-    p_val_cutoff = 0.1
+    classify_risk[classify_risk == 0]= 1
+    # For Holm Bonferroni correction
+#    classify_risk = classify_risk.sort_values()
+#    classify_risk_p_corr = []
+#    for i in range(len(classify_risk),0,-1):
+#        print(i)
+#        classify_risk_p_corr.append(classify_risk[len(classify_risk)-i])
+        
+    p_val_cutoff = 0.5
     classify_risk[(classify_risk>=p_val_cutoff) | (classify_risk ==0)]=1
     classify_risk[classify_risk<p_val_cutoff]=0
 
     df_class_generic['classify_risk'] = classify_risk
-    
-    # Find the dataframe that contains both the generic and the brand drugs
-    df_class_generic_train = df_class_generic[df_class_generic['risk_class'] == 0]
-
-#    df_class_generic['risk_class'][df_class_generic['risk_class'] > 0] = 1
-#    df_class_generic['risk_class'][df_class_generic['risk_class'] < 0] = 0
     return df_class_generic
 
 def find_sim_bene_num(df_class_generic):
@@ -404,8 +406,9 @@ def find_spending_change(df_spending_pre, df_spending_post):
     df_spending_difference = pd.concat([series_diff_spending, series_diff_dosage, series_diff_claims,
                                         series_diff_bene, series_diff_avg_spending_per_dos], axis=1)
 
-    df_spending_difference.columns = ['diff_spending', 'diff_dosage', 'diff_claims', 'diff_bene',
-                                      'diff_avg_spending_per_dose']
+    df_spending_difference.columns = ['percent_change_spending', 'percent_change_dosage', 
+                                      'percent_change_claims', 'percent_change_bene',
+                                      'percent_change_avg_spending_per_dose']
     return df_spending_difference
 
 def merge_spending_diff(df_spending_current, df_spending_2013, df_spending_difference):

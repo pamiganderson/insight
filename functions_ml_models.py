@@ -23,7 +23,9 @@ Written in Python 3.6
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
 # import models and other features from sci-kit learn
+from xgboost import XGBClassifier
 from sklearn import model_selection
 from sklearn.model_selection import cross_val_score
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -52,12 +54,12 @@ def compare_classifiers(df_features, resp_var):
     # prepare models
     models = []
     models.append(('LR', LogisticRegression()))
-    models.append(('LDA', LinearDiscriminantAnalysis()))
-    models.append(('KNN', KNeighborsClassifier()))
-    models.append(('CART', DecisionTreeClassifier(class_weight = 'balanced', max_depth = 5)))
-    #models.append(('CART', DecisionTreeClassifier(class_weight = 'balanced', criterion = 'entropy')))
-    models.append(('RF', RandomForestClassifier(class_weight = 'balanced', criterion = 'entropy', max_depth = 5)))
+#    models.append(('LDA', LinearDiscriminantAnalysis()))
+#    models.append(('KNN', KNeighborsClassifier()))
+    models.append(('CART', DecisionTreeClassifier()))
+    models.append(('RF', RandomForestClassifier()))
     models.append(('NB', GaussianNB()))
+#    models.append(('XGB', XGBClassifier()))
 
     # Prepare data
     X = df_features
@@ -68,37 +70,34 @@ def compare_classifiers(df_features, resp_var):
                                                         random_state = seed)
 
     sm = SMOTE(random_state=12, ratio = 1.0)
-    X_train_res, y_train_res = sm.fit_sample(X_train, y_train)
-
-#    X_train_res = X_train
-#    y_train_res = y_train
+    x_train_res, y_train_res = sm.fit_sample(X_train, y_train)
 
     results = []
     names = []
     # scoring parameters: http://scikit-learn.org/stable/modules/model_evaluation.html
-    scoring_param = 'roc_auc'
+    scoring_param = 'average_precision'
     for name, model in models:
         kfold = model_selection.KFold(n_splits = 5, random_state = seed, shuffle=True)
-        cv_results = model_selection.cross_val_score(model, X_train_res, y_train_res, cv=kfold, scoring = scoring_param)
+        cv_results = model_selection.cross_val_score(model, x_train_res, y_train_res, cv=kfold,
+                                                     scoring = scoring_param)
         results.append(cv_results)
         names.append(name)
         msg = "%s: %f (%f)" % (name, cv_results.mean(), cv_results.std())
         print(msg)
-    results_plot = [result-.2 for result in results]
     # Box plot of comparison of models
     fig = plt.figure()
     fig.suptitle('Model Comparison')
     ax = fig.add_subplot(111)
-    plt.boxplot(results_plot)
+    plt.boxplot(results)
     ax.set_xticklabels(names)
-    ax.set_ylabel('ROC AUC')
+    ax.set_ylabel('P-R AUC')
     plt.show()
 
-    return results
+#    return results_plot
 
 
 def random_forest_model(df_features, resp_var):
-    
+        
     roc_dict = {}
     roc_list = []
     recall_list = []
@@ -113,12 +112,12 @@ def random_forest_model(df_features, resp_var):
                                                             stratify=y,
                                                             random_state = seed)
         
+        # SMOTE class balancing
         sm = SMOTE(random_state=12, ratio = 1.0)
         x_train_res, y_train_res = sm.fit_sample(X_train, y_train)
- #       X_train_res, y_train_res = SMOTE(kind='borderline1').fit_sample(X_train, y_train)
-
+        
         # Random Forest 
-        rf = RandomForestClassifier(class_weight = 'balanced', criterion = 'entropy')
+        rf = RandomForestClassifier(criterion = 'entropy')
         # to see hyperparameters names: rf.get_params()
         params_rf = {
                 #'n_estimators' : [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)],
@@ -130,28 +129,18 @@ def random_forest_model(df_features, resp_var):
                                param_grid = params_rf, 
                                cv=5, scoring = 'recall_weighted')
         #grid_rf.fit(X_train, y_train)
-        grid_rf.fit(X_train_res, y_train_res)
+        grid_rf.fit(x_train_res, y_train_res)
         rf_best_model = grid_rf.best_estimator_
         y_pred = rf_best_model.predict(X_test)
         class_report = classification_report(y_test, y_pred)
         confusion_matrix(y_test, y_pred)
-        
-#        y_pred = rf_best_model.predict(X)
-#        class_report = classification_report(y, y_pred)
-#        confusion_matrix(y, y_pred)
-        
-        # Find best model parameters
-#        rf_best_model = grid_rf.best_estimator_
-#        y_pred = rf_best_model.predict(X_test)
-#        class_report = classification_report(y_test, y_pred)
-#        confusion_matrix(y_test, y_pred)
-#    
+            
         #plot important features
         importances_rf = pd.Series(rf_best_model.feature_importances_,
                                    index = X.columns)
         sorted_importances_rf = importances_rf.sort_values()
         graph_title = 'Random Forest Important Features'
-        #plot_feature_importance(sorted_importances_rf, graph_title)
+        plot_feature_importance(sorted_importances_rf, graph_title)
         
         dict_results= {'confusion_matrix' : confusion_matrix(y_test, y_pred),
                        'classification_report' : classification_report(y_test, y_pred),
@@ -165,4 +154,156 @@ def random_forest_model(df_features, resp_var):
         recall_list.append(recall_score(y_test, y_pred))
         precision_list.append(precision_score(y_test, y_pred))
         
+        plot_roc_curve(rf, X_train, y_train, x_test)
+        
     return dict_results
+
+def xgboost_model():
+
+    # To prevent XG boost error    
+    import os
+    os.environ['KMP_DUPLICATE_LIB_OK']='True'
+    
+    dict_roc = {}
+    for i in range(0,10):
+        seed = i
+        X = df_features
+        y = resp_var
+        X_train, X_test, y_train, y_test = train_test_split(X, y, 
+                                                            test_size = 0.3,
+                                                            stratify=y,
+                                                            random_state = seed)
+    
+        sm = SMOTE(random_state=12, ratio = 1.0)
+        x_train_res, y_train_res = sm.fit_sample(X_train, y_train)
+    
+        model = XGBClassifier(scale_pos_weight=1)
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        class_report = classification_report(y_test, y_pred)
+        confusion_matrix(y_test, y_pred)
+        dict_roc[i] = confusion_matrix(y_test, y_pred)
+        
+def plot_roc_curve(classifier, X, y):
+    from sklearn.metrics import roc_curve, auc
+    from sklearn.model_selection import StratifiedKFold
+    from scipy import interp
+    
+    cv = StratifiedKFold(n_splits=5)
+    tprs = []
+    aucs = []
+    mean_fpr = np.linspace(0, 1, 100)
+    
+    i = 0
+    
+    X = df_features.reset_index(drop=True)
+    y = resp_var.reset_index(drop=True)
+    
+    for train, test in cv.split(X, y):
+        probas_ = classifier.fit(X.iloc[train], y.iloc[train]).predict_proba(X.iloc[test])
+        # Compute ROC curve and area the curve
+        fpr, tpr, thresholds = roc_curve(y.iloc[test], probas_[:, 1])
+        tprs.append(interp(mean_fpr, fpr, tpr))
+        tprs[-1][0] = 0.0
+        roc_auc = auc(fpr, tpr)
+        aucs.append(roc_auc)
+        plt.plot(fpr, tpr, lw=1, alpha=0.3,
+                 label='ROC fold %d (AUC = %0.2f)' % (i, roc_auc))
+    
+        i += 1
+    plt.plot([0, 1], [0, 1], linestyle='--', lw=2, color='r',
+             label='Chance', alpha=.8)
+    
+    mean_tpr = np.mean(tprs, axis=0)
+    mean_tpr[-1] = 1.0
+    mean_auc = auc(mean_fpr, mean_tpr)
+    std_auc = np.std(aucs)
+    plt.plot(mean_fpr, mean_tpr, color='b',
+             label=r'Mean ROC (AUC = %0.2f $\pm$ %0.2f)' % (mean_auc, std_auc),
+             lw=2, alpha=.8)
+    
+    std_tpr = np.std(tprs, axis=0)
+    tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+    tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+    plt.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
+                     label=r'$\pm$ 1 std. dev.')
+    
+    plt.xlim([-0.05, 1.05])
+    plt.ylim([-0.05, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver operating characteristic example')
+    plt.legend(loc="lower right")
+    plt.show()
+    
+def plot_precision_recall(classifier, X_test, y_test, y_score):
+    
+    from sklearn.metrics import precision_recall_curve
+    import matplotlib.pyplot as plt
+    from sklearn.utils.fixes import signature
+    from sklearn.metrics import average_precision_score
+    
+
+    
+    classifier.fit(X_train, y_train)
+    predictions_probs = classifier.predict_proba(X_test)
+    average_precision = average_precision_score(y_test, predictions_probs[:,1])
+
+    print('Average precision-recall score: {0:0.2f}'.format(
+            average_precision))
+    
+    precision, recall, _ = precision_recall_curve(y_test, predictions_probs[:,1])
+    
+    # In matplotlib < 1.5, plt.fill_between does not have a 'step' argument
+    step_kwargs = ({'step': 'post'}
+                   if 'step' in signature(plt.fill_between).parameters
+                   else {})
+    plt.step(recall, precision, color='b', alpha=0.2,
+             where='post')
+    plt.fill_between(recall, precision, alpha=0.2, color='b', **step_kwargs)
+    
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.ylim([0.0, 1.05])
+    plt.xlim([0.0, 1.0])
+    plt.title('Precision-Recall curve: AP={0:0.2f}'.format(
+              average_precision))
+    
+def rf_regressor(X, y):
+    # Import the model we are using
+    from sklearn.ensemble import RandomForestRegressor
+    # Instantiate model with 1000 decision trees
+    rf = RandomForestRegressor(random_state = 42)
+    
+    seed = i
+    X = df_features
+    y = resp_var
+    X_train, X_test, y_train, y_test = train_test_split(X, y, 
+                                                        test_size = 0.3,
+                                                        random_state = seed)
+
+#    sm = SMOTE(random_state=12, ratio = 1.0)
+#    x_train_res, y_train_res = sm.fit_sample(X_train, y_train)
+    # Train the model on training data
+    rf.fit(X_train, y_train)
+
+    # Use the forest's predict method on the test data
+    predictions = rf.predict(X_test)
+    # Calculate the absolute errors
+    errors = abs(predictions - y_test['chi_sq_val'])
+    
+    plt.figure()
+    plt.plot(y_test, predictions, 'b*')
+    plt.xlabel('Test Set Chi Sq')
+    plt.ylabel('Predicted Chi Sq')
+    plt.title('Random Forest Regressor on Chi Sq Stat')
+    
+#    bin_vals = np.linspace(0,10000,1000)
+#    plt.figure()
+#    plt.hist(y['chi_sq_val'], bins=bin_vals)
+#    plt.xlabel('Chi Sq Test Stat')
+#    plt.ylabel('Count')
+#    plt.title('Distribution of Chi Sq Test Statistic')
+
+    # Print out the mean absolute error (mae)
+    print('Mean Absolute Error:', round(np.mean(errors), 2), 'degrees.')
