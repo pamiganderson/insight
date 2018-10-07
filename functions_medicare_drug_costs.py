@@ -231,9 +231,9 @@ def classify_generic_risk(df_piv_merge_generic_risk):
         if val == df_piv_merge_generic_risk['generic_name'][i+1]:
             # create contingency table
             # first entry will be for brand, second will be for generic
-            ad_ev_1 = df_piv_merge_generic_risk.iloc[i]['serious_count']
+            ad_ev_1 = df_piv_merge_generic_risk.iloc[i]['serious_count_pre_pre']
             tot_1 = df_piv_merge_generic_risk.iloc[i]['total_beneficiaries']
-            ad_ev_2 = df_piv_merge_generic_risk.iloc[i+1]['serious_count']
+            ad_ev_2 = df_piv_merge_generic_risk.iloc[i+1]['serious_count_pre_pre']
             tot_2 = df_piv_merge_generic_risk.iloc[i+1]['total_beneficiaries']
             
             if df_piv_merge_generic_risk.iloc[i]['risk_class'] == -1:
@@ -352,7 +352,7 @@ def classify_generic_risk(df_piv_merge_generic_risk):
 #        print(i)
 #        classify_risk_p_corr.append(classify_risk[len(classify_risk)-i])
         
-    p_val_cutoff = 0.5
+    p_val_cutoff = 0.05
     classify_risk[(classify_risk>=p_val_cutoff) | (classify_risk ==0)]=1
     classify_risk[classify_risk<p_val_cutoff]=0
 

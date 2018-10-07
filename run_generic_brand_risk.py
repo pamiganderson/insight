@@ -38,17 +38,17 @@ df_ad_brand_prev_merge = df_ad_brand_prev_1y.merge(df_ad_brand_prev_2y,
                                               right_on='drug_brand_name',
                                               how='outer')
 drug_gen_list = []
-for i in range(0, len(df_ad_brand_pre_merge)):
-    if df_ad_brand_pre_merge.iloc[i]['drug_generic_name_x'] == 0:
-        drug_gen_list.append(df_ad_brand_pre_merge.iloc[i]['drug_generic_name_y'])
+for i in range(0, len(df_ad_brand_prev_merge)):
+    if df_ad_brand_prev_merge.iloc[i]['drug_generic_name_x'] == 0:
+        drug_gen_list.append(df_ad_brand_prev_merge.iloc[i]['drug_generic_name_y'])
     else:
-        drug_gen_list.append(df_ad_brand_pre_merge.iloc[i]['drug_generic_name_x'])
-df_ad_brand_pre_merge['drug_generic_name'] = pd.Series(drug_gen_list)
-df_ad_brand_pre_merge = df_ad_brand_pre_merge.drop(['drug_generic_name_x', 
+        drug_gen_list.append(df_ad_brand_prev_merge.iloc[i]['drug_generic_name_x'])
+df_ad_brand_prev_merge['drug_generic_name'] = pd.Series(drug_gen_list)
+df_ad_brand_prev_merge = df_ad_brand_prev_merge.drop(['drug_generic_name_x', 
                                                     'drug_generic_name_y'], axis=1)
-df_ad_brand_pre_merge.rename(columns={'serious_count_x': 'serious_count_pre',
+df_ad_brand_prev_merge.rename(columns={'serious_count_x': 'serious_count_pre',
                                       'serious_count_y':'serious_count_pre_pre'}, inplace=True)
-df_ad_brand_pre_merge['serious_range'] = df_ad_brand_pre_merge['serious_count_pre'] - df_ad_brand_pre_merge['serious_count_pre_pre']
+df_ad_brand_prev_merge['serious_range'] = df_ad_brand_prev_merge['serious_count_pre'] - df_ad_brand_prev_merge['serious_count_pre_pre']
 
 
 
@@ -79,7 +79,7 @@ df_spending_tot = merge_spending_diff(df_spending_2014, df_spending_2013, df_spe
 
 ########## MERGE SPENDING WITH AD EV BY BRAND ##########
 # Merge spending with over 2 manufacturers with adverse event by brand
-df_ad_brand_total = df_ad_brand.merge(df_ad_brand_pre_merge, left_on='drug_brand_name',
+df_ad_brand_total = df_ad_brand.merge(df_ad_brand_prev_merge, left_on='drug_brand_name',
                                       right_on='drug_brand_name', how='outer')
 df_ad_brand_total = df_ad_brand_total.fillna(0)
 drug_gen_list = []
@@ -91,8 +91,6 @@ for i in range(0, len(df_ad_brand_total)):
 df_ad_brand_total['drug_generic_name'] = pd.Series(drug_gen_list)
 df_ad_brand_total = df_ad_brand_total.drop(['drug_generic_name_x', 
                                             'drug_generic_name_y'], axis=1)
-#df_ad_brand_total.rename(columns={'serious_count_x': 'serious_count',
-#                                  'serious_count_y':'serious_count_pre'}, inplace=True)
 
 # Sumarize the spending information from CMS
 df_merge_ad_spending = merge_spending_df_tot_and_ad_df(df_spending_tot,
@@ -146,7 +144,7 @@ df_features = df_merge_class_2[['total_beneficiaries', 'total_claims',
                                 'serious_count_pre',
                                 'serious_count_pre_pre', 'serious_range']]
 resp_var = df_merge_class_2[['classify_risk']]
-resp_var = df_merge_class_2[['chi_sq_val']]
+#resp_var = df_merge_class_2[['chi_sq_val']]
 random_forest_model()
 
 # Excluding these features:

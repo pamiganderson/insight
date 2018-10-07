@@ -14,6 +14,9 @@ def plot_feature_importance(sorted_series_features, title_str):
     plt.figure()
     sorted_series_features.plot(kind = 'barh', color = 'blue')
     plt.title(title_str)
+    plt.xlabel('Importance')
+    plt.ylabel('Feature')
+    plt.tight_layout(pad=2.0, w_pad=5.0, h_pad=1.0)
     plt.show()
     
     

@@ -104,7 +104,7 @@ def random_forest_model(df_features, resp_var):
     precision_list = []
     # Prepare data
     for i in range(0,25):
-        seed = i
+        seed = 2
         X = df_features
         y = resp_var
         X_train, X_test, y_train, y_test = train_test_split(X, y, 
@@ -127,7 +127,7 @@ def random_forest_model(df_features, resp_var):
         
         grid_rf = GridSearchCV(estimator = rf, 
                                param_grid = params_rf, 
-                               cv=5, scoring = 'recall_weighted')
+                               cv=5, scoring = 'average_precision')
         #grid_rf.fit(X_train, y_train)
         grid_rf.fit(x_train_res, y_train_res)
         rf_best_model = grid_rf.best_estimator_
@@ -140,6 +140,27 @@ def random_forest_model(df_features, resp_var):
                                    index = X.columns)
         sorted_importances_rf = importances_rf.sort_values()
         graph_title = 'Random Forest Important Features'
+        
+        sorted_importances_rf.rename({sorted_importances_rf.index.values[18]]' : 'Increase ADR/Year',
+                                     sorted_importances_rf.index.values[17] : 'Total Manuf',
+                                     sorted_importances_rf.index.values[16] : 'Increase # Manuf/Year',
+                                     sorted_importances_rf.index.values[15] : 'Generic/Brand Price Range',
+                                     sorted_importances_rf.index.values[14] : 'Generic/Brand # Patient Range',
+                                     sorted_importances_rf.index.values[13] : 'Generic/Brand Spending Range',
+                                     sorted_importances_rf.index.values[12] : 'Total # Patients',
+                                     sorted_importances_rf.index.values[11] : '#ADR Previous Year',
+                                     sorted_importances_rf.index.values[10] : '% Change Dosage Prescribed/Year',
+                                     sorted_importances_rf.index.values[9] : 'Total Spending',
+                                     sorted_importances_rf.index.values[8] : '% Change Spending/Year',
+                                     sorted_importances_rf.index.values[7] : '% Change Spending/Dose/Year',
+                                     sorted_importances_rf.index.values[6] : 'Total # Doses Prescribed',
+                                     sorted_importances_rf.index.values[5] : '% Change # Patients/year',
+                                     sorted_importances_rf.index.values[4] : 'Generic/Brand Total Spending Range',
+                                     sorted_importances_rf.index.values[3] : '% Change # Claims/Year',
+                                     sorted_importances_rf.index.values[2] : 'Total Claims',
+                                     sorted_importances_rf.index.values[1] : 'NTI Index',
+                                     sorted_importances_rf.index.values[0] : '# Active Ingredients'}, inplace=True)
+        
         plot_feature_importance(sorted_importances_rf, graph_title)
         
         dict_results= {'confusion_matrix' : confusion_matrix(y_test, y_pred),
@@ -153,8 +174,6 @@ def random_forest_model(df_features, resp_var):
         roc_list.append(roc_score)
         recall_list.append(recall_score(y_test, y_pred))
         precision_list.append(precision_score(y_test, y_pred))
-        
-        plot_roc_curve(rf, X_train, y_train, x_test)
         
     return dict_results
 
