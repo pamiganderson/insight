@@ -221,6 +221,41 @@ def find_num_manuf_and_change(df_spending_pre, df_spending_post):
     df_manufacturer['total_manuf'] = df_spending_2manuf_post['total_spending']
     return df_manufacturer
 
+def find_spending_change(df_spending_pre, df_spending_post):
+    series_diff_spending = (df_spending_post[['total_spending']] - df_spending_pre[['total_spending']])/df_spending_pre[['total_spending']]
+    series_diff_dosage = (df_spending_post[['total_dosage_units']] - df_spending_pre[['total_dosage_units']])/df_spending_pre[['total_dosage_units']]
+    series_diff_claims = (df_spending_post[['total_claims']] - df_spending_pre[['total_claims']])/df_spending_pre[['total_claims']]
+    series_diff_bene = (df_spending_post[['total_beneficiaries']] - df_spending_pre[['total_beneficiaries']])/df_spending_pre[['total_beneficiaries']]
+    series_diff_avg_spending_per_dos = (df_spending_post[['average_spending_per_dosage_unit']] - df_spending_pre[['average_spending_per_dosage_unit']])/df_spending_pre[['average_spending_per_dosage_unit']]
+    
+    series_diff_spending.replace([np.inf, -np.inf], np.nan)
+    series_diff_dosage.replace([np.inf, -np.inf], np.nan)
+    series_diff_claims.replace([np.inf, -np.inf], np.nan)
+    series_diff_bene.replace([np.inf, -np.inf], np.nan)
+    series_diff_avg_spending_per_dos.replace([np.inf, -np.inf], np.nan)
+
+    
+    df_spending_difference = pd.concat([series_diff_spending, series_diff_dosage, series_diff_claims,
+                                        series_diff_bene, series_diff_avg_spending_per_dos], axis=1)
+
+    df_spending_difference.columns = ['percent_change_spending', 'percent_change_dosage', 
+                                      'percent_change_claims', 'percent_change_bene',
+                                      'percent_change_avg_spending_per_dose']
+    return df_spending_difference
+
+def merge_spending_diff(df_spending_current, df_spending_2013, df_spending_difference):
+    # Merge spending by brand and adverse events
+    df_spending_2013 = df_spending_2013.drop(['average_spending_per_claim', 
+                                              'average_spending_per_beneficiary',
+                                              'manufacturer'], axis=1)
+    df_spending_tot = df_spending_2013.merge(df_spending_difference,
+                                                  left_index =True,
+                                                  right_index =True,
+                                                  how = 'inner')
+    df_spending_current.rename(columns={'average_spending_per_dosage_unit': 'current_avg_spending_per_dose'}, inplace=True)
+    df_spending_tot['current_avg_spending_per_dose'] = df_spending_current['current_avg_spending_per_dose']
+    return df_spending_tot
+
 ########## CLASSIFICATION ##########
 def classify_generic_risk(df_piv_merge_generic_risk):   
     df_piv_merge_generic_risk = df_piv_merge_generic_risk.sort_values(by='generic_name')
@@ -231,9 +266,9 @@ def classify_generic_risk(df_piv_merge_generic_risk):
         if val == df_piv_merge_generic_risk['generic_name'][i+1]:
             # create contingency table
             # first entry will be for brand, second will be for generic
-            ad_ev_1 = df_piv_merge_generic_risk.iloc[i]['serious_count_pre_pre']
+            ad_ev_1 = df_piv_merge_generic_risk.iloc[i]['serious_count']
             tot_1 = df_piv_merge_generic_risk.iloc[i]['total_beneficiaries']
-            ad_ev_2 = df_piv_merge_generic_risk.iloc[i+1]['serious_count_pre_pre']
+            ad_ev_2 = df_piv_merge_generic_risk.iloc[i+1]['serious_count']
             tot_2 = df_piv_merge_generic_risk.iloc[i+1]['total_beneficiaries']
             
             if df_piv_merge_generic_risk.iloc[i]['risk_class'] == -1:
@@ -358,70 +393,3 @@ def classify_generic_risk(df_piv_merge_generic_risk):
 
     df_class_generic['classify_risk'] = classify_risk
     return df_class_generic
-
-def find_sim_bene_num(df_class_generic):
-    num_thres = 5000
-    df_class_generic_ratio = df_class_generic[abs(df_class_generic['sum_tot_bene']) < num_thres]
-    return df_class_generic_ratio
-
-def exploratory_plot(df):
-    from pandas.plotting import scatter_matrix
-
-    color_vals = np.array(df['risk_class'])
-    color_vals = np.where(color_vals == 1, 'b', 'r')
-    
-    scatter_matrix(df[['sum_tot_bene',
-                       'sum_tot_claim',
-                       'sum_tot_dosage',
-                       'sum_tot_spend',
-                       'risk_class']],
-                        alpha = 0.8, color = color_vals)
-
-def plot_manuf_vs_generic(df_spending_2014):
-    df_piv_2014 = pd.pivot_table(df_spending_2014, index='generic_name', 
-                                 values='manufacturer',
-                                 aggfunc = 'count')
-    df_piv_2014 = df_piv_2014.reset_index()
-    
-    plt.figure()
-    df_merge_2014.plot(kind='scatter', x = 'manufacturer', y = 'serious_count')
-    plt.xlabel('Number of Manufacturers')
-    plt.ylabel('Number of Adverse Events')
-    plt.title('2014 Q1 Adverse Events vs. Manufacturer #')
-
-def find_spending_change(df_spending_pre, df_spending_post):
-    series_diff_spending = (df_spending_post[['total_spending']] - df_spending_pre[['total_spending']])/df_spending_pre[['total_spending']]
-    series_diff_dosage = (df_spending_post[['total_dosage_units']] - df_spending_pre[['total_dosage_units']])/df_spending_pre[['total_dosage_units']]
-    series_diff_claims = (df_spending_post[['total_claims']] - df_spending_pre[['total_claims']])/df_spending_pre[['total_claims']]
-    series_diff_bene = (df_spending_post[['total_beneficiaries']] - df_spending_pre[['total_beneficiaries']])/df_spending_pre[['total_beneficiaries']]
-    series_diff_avg_spending_per_dos = (df_spending_post[['average_spending_per_dosage_unit']] - df_spending_pre[['average_spending_per_dosage_unit']])/df_spending_pre[['average_spending_per_dosage_unit']]
-    
-    series_diff_spending.replace([np.inf, -np.inf], np.nan)
-    series_diff_dosage.replace([np.inf, -np.inf], np.nan)
-    series_diff_claims.replace([np.inf, -np.inf], np.nan)
-    series_diff_bene.replace([np.inf, -np.inf], np.nan)
-    series_diff_avg_spending_per_dos.replace([np.inf, -np.inf], np.nan)
-
-    
-    df_spending_difference = pd.concat([series_diff_spending, series_diff_dosage, series_diff_claims,
-                                        series_diff_bene, series_diff_avg_spending_per_dos], axis=1)
-
-    df_spending_difference.columns = ['percent_change_spending', 'percent_change_dosage', 
-                                      'percent_change_claims', 'percent_change_bene',
-                                      'percent_change_avg_spending_per_dose']
-    return df_spending_difference
-
-def merge_spending_diff(df_spending_current, df_spending_2013, df_spending_difference):
-    # Merge spending by brand and adverse events
-    df_spending_2013 = df_spending_2013.drop(['average_spending_per_claim', 
-                                              'average_spending_per_beneficiary',
-                                              'manufacturer'], axis=1)
-    df_spending_tot = df_spending_2013.merge(df_spending_difference,
-                                                  left_index =True,
-                                                  right_index =True,
-                                                  how = 'inner')
-    df_spending_current.rename(columns={'average_spending_per_dosage_unit': 'current_avg_spending_per_dose'}, inplace=True)
-    df_spending_tot['current_avg_spending_per_dose'] = df_spending_current['current_avg_spending_per_dose']
-    return df_spending_tot
-
-

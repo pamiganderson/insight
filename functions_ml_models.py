@@ -59,7 +59,7 @@ def compare_classifiers(df_features, resp_var):
     models.append(('CART', DecisionTreeClassifier()))
     models.append(('RF', RandomForestClassifier()))
     models.append(('NB', GaussianNB()))
-#    models.append(('XGB', XGBClassifier()))
+    models.append(('XGB', XGBClassifier()))
 
     # Prepare data
     X = df_features
@@ -140,27 +140,7 @@ def random_forest_model(df_features, resp_var):
                                    index = X.columns)
         sorted_importances_rf = importances_rf.sort_values()
         graph_title = 'Random Forest Important Features'
-        
-        sorted_importances_rf.rename({sorted_importances_rf.index.values[18]]' : 'Increase ADR/Year',
-                                     sorted_importances_rf.index.values[17] : 'Total Manuf',
-                                     sorted_importances_rf.index.values[16] : 'Increase # Manuf/Year',
-                                     sorted_importances_rf.index.values[15] : 'Generic/Brand Price Range',
-                                     sorted_importances_rf.index.values[14] : 'Generic/Brand # Patient Range',
-                                     sorted_importances_rf.index.values[13] : 'Generic/Brand Spending Range',
-                                     sorted_importances_rf.index.values[12] : 'Total # Patients',
-                                     sorted_importances_rf.index.values[11] : '#ADR Previous Year',
-                                     sorted_importances_rf.index.values[10] : '% Change Dosage Prescribed/Year',
-                                     sorted_importances_rf.index.values[9] : 'Total Spending',
-                                     sorted_importances_rf.index.values[8] : '% Change Spending/Year',
-                                     sorted_importances_rf.index.values[7] : '% Change Spending/Dose/Year',
-                                     sorted_importances_rf.index.values[6] : 'Total # Doses Prescribed',
-                                     sorted_importances_rf.index.values[5] : '% Change # Patients/year',
-                                     sorted_importances_rf.index.values[4] : 'Generic/Brand Total Spending Range',
-                                     sorted_importances_rf.index.values[3] : '% Change # Claims/Year',
-                                     sorted_importances_rf.index.values[2] : 'Total Claims',
-                                     sorted_importances_rf.index.values[1] : 'NTI Index',
-                                     sorted_importances_rf.index.values[0] : '# Active Ingredients'}, inplace=True)
-        
+                
         plot_feature_importance(sorted_importances_rf, graph_title)
         
         dict_results= {'confusion_matrix' : confusion_matrix(y_test, y_pred),
@@ -184,25 +164,23 @@ def xgboost_model():
     os.environ['KMP_DUPLICATE_LIB_OK']='True'
     
     dict_roc = {}
-    for i in range(0,10):
-        seed = i
-        X = df_features
-        y = resp_var
-        X_train, X_test, y_train, y_test = train_test_split(X, y, 
-                                                            test_size = 0.3,
-                                                            stratify=y,
-                                                            random_state = seed)
+    seed = 2
+    X = df_features
+    y = resp_var
+    X_train, X_test, y_train, y_test = train_test_split(X, y, 
+                                                        test_size = 0.3,
+                                                        stratify=y,
+                                                        random_state = seed)
+
+    sm = SMOTE(random_state=12, ratio = 1.0)
+    x_train_res, y_train_res = sm.fit_sample(X_train, y_train)
+
+    model = XGBClassifier(scale_pos_weight=1)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    class_report = classification_report(y_test, y_pred)
+    confusion_matrix(y_test, y_pred)
     
-        sm = SMOTE(random_state=12, ratio = 1.0)
-        x_train_res, y_train_res = sm.fit_sample(X_train, y_train)
-    
-        model = XGBClassifier(scale_pos_weight=1)
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-        class_report = classification_report(y_test, y_pred)
-        confusion_matrix(y_test, y_pred)
-        dict_roc[i] = confusion_matrix(y_test, y_pred)
-        
 def plot_roc_curve(classifier, X, y):
     from sklearn.metrics import roc_curve, auc
     from sklearn.model_selection import StratifiedKFold

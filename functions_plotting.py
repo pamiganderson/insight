@@ -36,3 +36,28 @@ def plot_serious_events(df_merge_class):
     #ax1.legend_.remove()
     plt.legend(frameon=False, loc='upper left', ncol=1, bbox_to_anchor=(1.0, 1.0))
     plt.tight_layout(pad=2.0, w_pad=5.0, h_pad=1.0)
+    
+def exploratory_plot(df):
+    from pandas.plotting import scatter_matrix
+
+    color_vals = np.array(df['risk_class'])
+    color_vals = np.where(color_vals == 1, 'b', 'r')
+    
+    scatter_matrix(df[['sum_tot_bene',
+                       'sum_tot_claim',
+                       'sum_tot_dosage',
+                       'sum_tot_spend',
+                       'risk_class']],
+                        alpha = 0.8, color = color_vals)
+
+def plot_manuf_vs_generic(df_spending_2014):
+    df_piv_2014 = pd.pivot_table(df_spending_2014, index='generic_name', 
+                                 values='manufacturer',
+                                 aggfunc = 'count')
+    df_piv_2014 = df_piv_2014.reset_index()
+    
+    plt.figure()
+    df_merge_2014.plot(kind='scatter', x = 'manufacturer', y = 'serious_count')
+    plt.xlabel('Number of Manufacturers')
+    plt.ylabel('Number of Adverse Events')
+    plt.title('2014 Q1 Adverse Events vs. Manufacturer #')
