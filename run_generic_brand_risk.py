@@ -19,8 +19,12 @@ from functions_medicare_drug_costs import (read_spending_csv, format_str_and_num
                                            merge_spending_diff, label_brand_generic)
 from functions_ml_models import compare_classifiers, random_forest_model
 
-
-# Load in adverse event tables
+# if name == main 
+# sep function for constants
+# separate into other functions
+# top level code ecap in function
+# Load in adverse event tables - more comments with context
+# constants - LINTER
 year_list = ['2012', '2013']
 year_to_predict = '2014'
 year_list.append(year_to_predict)
@@ -130,7 +134,7 @@ results_plot = compare_classifiers(df_merge_class_2[['total_beneficiaries', 'tot
                                     'serious_count_pre_pre', 'serious_range',
                                     'nti_index', 'num_act_ingredients']], df_merge_class_2[['classify_risk']])
 # Random Forest Model
-df_features = df_merge_class_2[['total_beneficiaries', 'total_claims',
+df_features = df_merge_class[['total_beneficiaries', 'total_claims',
                                 'total_dosage_units',
                                 'total_spending',
                                 'dose_price_range',
@@ -143,7 +147,7 @@ df_features = df_merge_class_2[['total_beneficiaries', 'total_claims',
                                 'nti_index', 'num_act_ingredients',
                                 'serious_count_pre',
                                 'serious_count_pre_pre', 'serious_range']]
-resp_var = df_merge_class_2[['classify_risk']]
+resp_var = df_merge_class[['classify_risk']]
 #resp_var = df_merge_class_2[['chi_sq_val']]
 random_forest_model()
 

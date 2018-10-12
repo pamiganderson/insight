@@ -98,7 +98,9 @@ app.layout = html.Div(style={'backgroundColor': colors_light['background']}, chi
 	html.Br(),
 
 	# Table wit Adverse events
-	html.Div(id='generic-adr'), #style={'position' : 'relative', 'left': '45%', 'width': '50%'}
+	html.Div(id='generic-adr', className="row"),
+
+		 #style={'position' : 'relative', 'left': '45%', 'width': '50%'}
 
 	html.Br(),
 	html.Br(),
@@ -193,8 +195,8 @@ def model_risk_value(value):
 	[dash.dependencies.Input('generic-selector', 'value')])
 def generic_adr_table(value):
 	df_generic = df_patient_react[df_patient_react['drug_generic_name'] == value]
-	style_parameters = style={'float': 'center', 'width': '50%', 'position':'relative',
-	'left' : '40%', 'textAlign' : 'center'}
+	style_parameters = style={'float': 'center', 
+	'textAlign' : 'center', 'width':'20%', 'margin-left' : '40%', 'margin-right':'40%'}
 	if df_generic.empty:
 		txt_disp = 'No Adverse Drug Reactions Reported Last 2 Years'
 		df_sub = pd.DataFrame()

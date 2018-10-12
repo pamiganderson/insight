@@ -2,21 +2,28 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Sep 20 09:22:59 2018
-
+ADD MORE
+make it easy to use for other people
+enough description to tell what's going on in dic string
+comment within each line of code
 @author: pamelaanderson
 """
+# reorder
 import numpy as np
 from numpy import inf
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import chi2_contingency
+import scipy.stats as stats
+
 
 ########## Set up spending dataframe ##########
 def read_spending_csv(path, file_name, year):
     df_spending = pd.read_csv(path + file_name)
     df_spending_noheader = df_spending.drop(0,axis=0)
     
+    # pull this out- make more reuseable
     year_column_dict = {'2012' : [3, 10],
                         '2013' : [10, 17],
                         '2014' : [17, 24]}
@@ -25,8 +32,12 @@ def read_spending_csv(path, file_name, year):
                                   df_spending_noheader.iloc[:,year_column_dict[year][0]:year_column_dict[year][1]]], axis=1)
     df_spending_year.columns = df_spending.iloc[0][0:10]
     return df_spending_year
-    
+
+    #(2 lines between )
 def format_str_and_numerics(df_spending_2014):
+    """ ADD """
+    # remove 2014 --> confusing!
+    # name --> val more specific 
     val_list =[]
     for i, val in enumerate(df_spending_2014['generic_name']):
         if val[-1] == " ":
@@ -262,6 +273,7 @@ def classify_generic_risk(df_piv_merge_generic_risk):
     p_val_chi_sq = []
     chi_sq_val = []
     index_list = []
+    exp_obs_pass = []
     for i, val in enumerate(df_piv_merge_generic_risk['generic_name'][:-1]):
         if val == df_piv_merge_generic_risk['generic_name'][i+1]:
             # create contingency table
@@ -295,19 +307,35 @@ def classify_generic_risk(df_piv_merge_generic_risk):
                 tot = ad_ev_1 + ad_ev_2 + (tot_1-ad_ev_2) + (tot_2-ad_ev_1)
                 # Calculate expected matrix
                 exp_obs = [[(row_1*col_1)/tot, (row_2*col_1)/tot], [(row_1*col_2)/tot, (row_2*col_2)/tot]]
-                
-            if (((obs[0][0] + obs[1][0]) == 0.0) | (obs[0][1] <= 0) | (obs[1][1] <= 0)):
-                p_val_chi_sq.append(1)
-                chi_sq_val.append(1)
-                index_list.append(i)
-            else:
-                chi2, p, dof, expected = chi2_contingency(obs)
-                if obs[0][0] > exp_obs[0][0]:
-                    p_val_chi_sq.append(p)
+            bool_exp_obs = np.array(exp_obs) < 5
+            if sum(sum(bool_exp_obs)) < 4:
+                exp_obs_pass.append(False)
+                if (((obs[0][0] + obs[1][0]) == 0.0) | (obs[0][1] <= 0) | (obs[1][1] <= 0)):
+                    p_val_chi_sq.append(1)
+                    chi_sq_val.append(1)
+                    index_list.append(i)
                 else:
-                    p_val_chi_sq.append(p)
-                chi_sq_val.append(chi2)
-                index_list.append(i)
+                    odds_rat, p = stats.fisher_exact(obs)
+                    if obs[0][0] > exp_obs[0][0]:
+                        p_val_chi_sq.append(p)
+                    else:
+                        p_val_chi_sq.append(p)
+                    chi_sq_val.append(odds_rat)
+                    index_list.append(i)
+            else:
+                exp_obs_pass.append(True)
+                if (((obs[0][0] + obs[1][0]) == 0.0) | (obs[0][1] <= 0) | (obs[1][1] <= 0)):
+                    p_val_chi_sq.append(1)
+                    chi_sq_val.append(1)
+                    index_list.append(i)
+                else:
+                    chi2, p, dof, expected = chi2_contingency(obs)
+                    if obs[0][0] > exp_obs[0][0]:
+                        p_val_chi_sq.append(p)
+                    else:
+                        p_val_chi_sq.append(p)
+                    chi_sq_val.append(chi2)
+                    index_list.append(i)
         else:
             p_val_chi_sq.append(0)
             chi_sq_val.append(0)

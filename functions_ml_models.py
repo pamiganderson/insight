@@ -118,11 +118,21 @@ def random_forest_model(df_features, resp_var):
         
         # Random Forest 
         rf = RandomForestClassifier(criterion = 'entropy')
+        # Number of trees
+        n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
+        # Minimum samples to split a node
+        min_samples_split = [2, 5, 10]
+        # Minimum samples per leaf
+        min_samples_leaf = [1, 2, 4]
+        # Other parameters: bootstrap - method to determine samples in each tree
+        # max_features - # featuers to consider at each split
+        
         # to see hyperparameters names: rf.get_params()
         params_rf = {
-                #'n_estimators' : [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)],
+                'n_estimators' : n_estimators,
                 'max_features' : ['auto', 'sqrt'],
-                'min_samples_leaf' : [1, 2, 4],
+                'min_samples_leaf' : min_samples_leaf,
+                'min_samples_split' : min_samples_split,
                 'bootstrap' : [True, False]}
         
         grid_rf = GridSearchCV(estimator = rf, 
@@ -163,8 +173,9 @@ def xgboost_model():
     import os
     os.environ['KMP_DUPLICATE_LIB_OK']='True'
     
-    dict_roc = {}
-    seed = 2
+    dict_conf = {}
+
+    seed = 18
     X = df_features
     y = resp_var
     X_train, X_test, y_train, y_test = train_test_split(X, y, 
@@ -172,14 +183,39 @@ def xgboost_model():
                                                         stratify=y,
                                                         random_state = seed)
 
-    sm = SMOTE(random_state=12, ratio = 1.0)
-    x_train_res, y_train_res = sm.fit_sample(X_train, y_train)
-
-    model = XGBClassifier(scale_pos_weight=1)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+    param_test1 = {
+    'max_depth':range(3,7,2),
+    'min_child_weight':range(1,2,2)
+    }
+    gsearch1 = GridSearchCV(estimator = XGBClassifier(learning_rate =0.1, 
+                                                      n_estimators=1000, 
+                                                      max_depth=5,
+                                                      min_child_weight=1,
+                                                      gamma=0, 
+                                                      subsample=0.8, 
+                                                      colsample_bytree=0.8,
+                                                      objective= 'binary:logistic', nthread=4,
+                                                      scale_pos_weight=1, seed=i), 
+                            param_grid = param_test1, 
+                            scoring='recall_weighted',
+                            n_jobs=4,
+                            iid=False, 
+                            cv=5)
+    
+    gsearch1.fit(X_train,y_train)
+    gsearch1.grid_scores_, gsearch1.best_params_, gsearch1.best_score_
+    
+    xgb_best_model = gsearch1.best_estimator_
+    y_pred = xgb_best_model.predict(X_test)
     class_report = classification_report(y_test, y_pred)
     confusion_matrix(y_test, y_pred)
+
+    
+#    model.fit(X_train, y_train)
+#    y_pred = model.predict(X_test)
+#    class_report = classification_report(y_test, y_pred)
+#    confusion_matrix(y_test, y_pred)
+
     
 def plot_roc_curve(classifier, X, y):
     from sklearn.metrics import roc_curve, auc
