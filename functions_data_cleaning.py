@@ -7,6 +7,8 @@ Created on Mon Sep 24 16:18:39 2018
 """
 
 def clean_ad_ev_table(df):
+    """ This function cleans the adverse event reporting data- correcting for drug labeling information 
+        using CMS database as the 'truth' to correct to """
     df['drug_generic_name'] = df['drug_generic_name'].str.lower()
     df['drug_brand_name'] = df['drug_brand_name'].str.lower()
 
@@ -24,7 +26,16 @@ def clean_ad_ev_table(df):
     drug_gen_series = drug_gen_series.str.replace('carbidopa and levodopa', 'carbidopa\levodopa')
     drug_gen_series = drug_gen_series.str.replace('estradiol,', 'estradiol')
     drug_gen_series = drug_gen_series.str.replace('levetiracetam injection', 'levetiracetam')
-    
+    drug_gen_series = drug_gen_series.str.replace('lisinopril and hydrochlorothiazide', 'lisinopril/hydrochlorothiazide')
+    drug_gen_series = drug_gen_series.str.replace('pantoprazole', '')
+    drug_gen_series = drug_gen_series.str.replace('raloxifene', 'raloxifene hci')
+
+    drug_gen_series[(df['drug_generic_name'] == 'metoprolol') & (df['drug_manuf_name'] != 'AstraZeneca Pharmaceuticals LP')] = 'metoprolol succinate'
+    drug_gen_series[(df['drug_generic_name'] == 'montelukast') & (df['drug_manuf_name'] != 'Merck Sharp & Dohme Corp.')] = 'montelukast sodium'
+    drug_gen_series[(df['drug_generic_name'] == 'pantoprazole') & (df['drug_manuf_name'] == 'Camber Pharmaceuticals, Inc.')] = 'pantoprazole sodium'
+    drug_gen_series[(df['drug_generic_name'] == 'sertraline') & (df['drug_manuf_name'] != 'Pfizer Laboratories Div Pfizer Inc')] = 'sertraline hci'
+
+
     # Fix brands names
     drug_brand_series = df['drug_brand_name']
     drug_brand_series = drug_brand_series.replace('fluoxetine', 'fluoxetine hci')
@@ -63,6 +74,32 @@ def clean_ad_ev_table(df):
     drug_brand_series[(df['drug_generic_name'] == 'lisinopril') & (df['drug_manuf_name'] != 'Merck Sharp & Dohme Corp.')] = 'lisinopril'
     drug_brand_series = drug_brand_series.str.replace('acetaminophen and codeine', 'Acetaminophen-Codeine')
     drug_brand_series[(df['drug_generic_name'] == 'acyclovir sodium') & (df['drug_manuf_name'] != 'Prestium Pharma, Inc.')] = 'acyclovir'
+    drug_brand_series[(df['drug_generic_name'] == 'lisinopril') & (df['drug_manuf_name'] != 'LUPIN LIMITED')] = 'lisinopril'
+    drug_brand_series[(df['drug_generic_name'] == 'lisinopril/hydrochlorothiazide') & (df['drug_manuf_name'] != 'Almatica Pharma Inc.')] = 'lisinopril/hydrochlorothiazide'
+    drug_brand_series[(df['drug_generic_name'] == 'azacitidine') & (df['drug_manuf_name'] != 'Celgene Corporation')] = 'azacitidine'
+
+
+    drug_brand_series = drug_brand_series.str.replace('methotrexate', 'methotrexate sodium')
+    drug_brand_series = drug_brand_series.str.replace('montelukast sodium chewable', 'montelukast sodium')
+    drug_brand_series = drug_brand_series.str.replace('nevirapine extended release', 'nevirapine')
+    drug_brand_series = drug_brand_series.str.replace('raloxifene', 'raloxifene hci')
+    drug_brand_series = drug_brand_series.str.replace('being well heartburn relief', 'ranitidine hci')
+    drug_brand_series = drug_brand_series.str.replace('acid reducer', 'ranitidine hci')
+
+    drug_brand_series[(df['drug_generic_name'] == 'meloxicam') & (df['drug_manuf_name'] != 'Boehringer Ingelheim Pharmaceuticals Inc.')] = 'meloxicam'
+    drug_brand_series[(df['drug_generic_name'] == 'memantine') & (df['drug_manuf_name'] != 'Allergan, Inc.')] = 'memantine'
+    drug_brand_series[(df['drug_generic_name'] == 'metaxalone') & (df['drug_manuf_name'] != 'Pfizer Laboratories Div Pfizer Inc')] = 'metaxalone'
+    drug_brand_series[(df['drug_generic_name'] == 'metoprolol') & (df['drug_manuf_name'] != 'AstraZeneca Pharmaceuticals LP')] = 'metoprolol succinate'
+    drug_brand_series[(df['drug_generic_name'] == 'modafinil') & (df['drug_manuf_name'] != 'Cephalon, Inc.')] = 'modafinil'
+    drug_brand_series[(df['drug_generic_name'] == 'nateglinide') & (df['drug_manuf_name'] != 'Novartis Pharmaceuticals Corporation')] = 'nateglinide'
+    drug_brand_series[(df['drug_generic_name'] == 'nitroglycerin') & (df['drug_manuf_name'] != 'Pfizer Laboratories Div Pfizer Inc')] = 'nitroglycerin'
+    drug_brand_series[(df['drug_generic_name'] == 'oxcarbazepine') & (df['drug_manuf_name'] != 'Novartis Pharmaceuticals Corporation')] = 'oxcarbazepine'
+    drug_brand_series[(df['drug_generic_name'] == 'oxycodone hci') & (df['drug_manuf_name'] != 'Mallinckrodt ARD Inc.')] = 'oxycodone hci'
+    drug_brand_series[(df['drug_generic_name'] == 'paclitaxel') & (df['drug_manuf_name'] != 'Celgene Corporation')] = 'paclitaxel'
+    drug_brand_series[(df['drug_generic_name'] == 'pantoprazole sodium') & (df['drug_manuf_name'] != 'Wyeth Pharmaceuticals LLC, a subsidiary of Pfizer Inc.')] = 'pantoprazole sodium'
+    drug_brand_series[(df['drug_generic_name'] == 'phenytoin') & (df['drug_manuf_name'] != 'Pfizer Laboratories Div Pfizer Inc')] = 'phenytoin'
+    drug_brand_series[(df['drug_generic_name'] == 'ranitidine hci') & (df['drug_manuf_name'] != 'GlaxoSmithKline Consumer Healthcare Holdings (US) LLC')] = 'ranitidine hci'
+    drug_brand_series[(df['drug_generic_name'] == 'sertraline') & (df['drug_manuf_name'] != 'Pfizer Laboratories Div Pfizer Inc')] = 'sertraline hci'
 
     df['drug_generic_name_re'] = drug_gen_series
     df['drug_brand_name_re'] = drug_brand_series
