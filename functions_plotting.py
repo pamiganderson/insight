@@ -6,8 +6,11 @@ Created on Tue Sep 25 08:44:23 2018
 @author: pamelaanderson
 """
 import matplotlib.pyplot as plt
+from pandas.plotting import scatter_matrix
 import seaborn as sns
     
+
+
 def plot_feature_importance(sorted_series_features, title_str):
     """ Plot feature importance from tree models """
     sns.set()
@@ -37,9 +40,9 @@ def plot_serious_events(df_merge_class):
     plt.legend(frameon=False, loc='upper left', ncol=1, bbox_to_anchor=(1.0, 1.0))
     plt.tight_layout(pad=2.0, w_pad=5.0, h_pad=1.0)
     
+    
 def exploratory_plot(df):
-    from pandas.plotting import scatter_matrix
-
+    """ Plot features relative to the risk class"""
     color_vals = np.array(df['risk_class'])
     color_vals = np.where(color_vals == 1, 'b', 'r')
     
@@ -50,7 +53,9 @@ def exploratory_plot(df):
                        'risk_class']],
                         alpha = 0.8, color = color_vals)
 
+
 def plot_manuf_vs_generic(df_spending_2014):
+    """ Plot the # of manufacturer relative to the adverse event count """
     df_piv_2014 = pd.pivot_table(df_spending_2014, index='generic_name', 
                                  values='manufacturer',
                                  aggfunc = 'count')

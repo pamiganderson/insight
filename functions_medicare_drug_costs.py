@@ -18,8 +18,9 @@ from scipy.stats import chi2_contingency
 import scipy.stats as stats
 
 
-########## Set up spending dataframe ##########
+
 def read_spending_csv(path, file_name, year):
+    """ Load the CMS spending csv """
     df_spending = pd.read_csv(path + file_name)
     df_spending_noheader = df_spending.drop(0,axis=0)
     
@@ -33,46 +34,45 @@ def read_spending_csv(path, file_name, year):
     df_spending_year.columns = df_spending.iloc[0][0:10]
     return df_spending_year
 
-    #(2 lines between )
-def format_str_and_numerics(df_spending_2014):
-    """ ADD """
-    # remove 2014 --> confusing!
-    # name --> val more specific 
+
+def format_str_and_numerics(df_spending):
+    """ Format the data types for the spending df """
     val_list =[]
-    for i, val in enumerate(df_spending_2014['generic_name']):
+    for i, val in enumerate(df_spending['generic_name']):
         if val[-1] == " ":
-            val_list.append(df_spending_2014.iloc[i]['generic_name'][:-1])
+            val_list.append(df_spending.iloc[i]['generic_name'][:-1])
         else:
-            val_list.append(df_spending_2014.iloc[i]['generic_name'][:])
-    df_spending_2014['generic_name'] = pd.Series(val_list)
+            val_list.append(df_spending.iloc[i]['generic_name'][:])
+    df_spending['generic_name'] = pd.Series(val_list)
     
     val_list =[]
-    for i, val in enumerate(df_spending_2014['brand_name']):
+    for i, val in enumerate(df_spending['brand_name']):
         if val[-1] == " ":
-            val_list.append(df_spending_2014.iloc[i]['brand_name'][:-1])
+            val_list.append(df_spending.iloc[i]['brand_name'][:-1])
         else:
-            val_list.append(df_spending_2014.iloc[i]['brand_name'][:])
-    df_spending_2014['brand_name'] = pd.Series(val_list)
+            val_list.append(df_spending.iloc[i]['brand_name'][:])
+    df_spending['brand_name'] = pd.Series(val_list)
             
-    df_spending_2014['brand_name'] = df_spending_2014['brand_name'].str.lower()
-    df_spending_2014['generic_name'] = df_spending_2014['generic_name'].str.lower()
+    df_spending['brand_name'] = df_spending['brand_name'].str.lower()
+    df_spending['generic_name'] = df_spending['generic_name'].str.lower()
 
     # Make the raised amount total usd column into numeric values
     list_col_names_to_convert_num = ['total_spending', 'total_dosage_units', 
                                      'total_claims', 'total_beneficiaries',
                                      'average_spending_per_dosage_unit']
     for k in list_col_names_to_convert_num:
-        series_tmp = df_spending_2014[k]
+        series_tmp = df_spending[k]
         series_tmp = series_tmp.str.replace(",","")
         series_tmp = series_tmp.str.replace("$","")
         series_tmp = series_tmp.str.replace(" ","")
         series_tmp = series_tmp.apply(pd.to_numeric)
-        df_spending_2014[k] = series_tmp
+        df_spending[k] = series_tmp
 
-    return df_spending_2014
+    return df_spending
     
+
 def create_ad_df_by_brand(df_ad_data_from_sql_q1):
-    # Pivot table for adverse events by generic_name
+    """ Create a df of the adverse events reports indexed by brand name """
     df_ad_data_from_sql_q1['drug_generic_name'] = df_ad_data_from_sql_q1['drug_generic_name'].str.lower()
     df_ad_data_from_sql_q1['drug_brand_name'] = df_ad_data_from_sql_q1['drug_brand_name'].str.lower()
     
@@ -83,19 +83,21 @@ def create_ad_df_by_brand(df_ad_data_from_sql_q1):
     df_piv_adv_2014_brand = df_piv_adv_2014_brand.reset_index()
     return df_piv_adv_2014_brand
 
-def merge_spending_df_and_ad_df(df_spending_2014, df_piv_adv_2014_brand):
-    df_spending_brand = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+
+def merge_spending_df_and_ad_df(df_spending, df_piv_adv_2014_brand):
+    """ Merging the CMS spending df with the adverse events df """
+    df_spending_brand = pd.pivot_table(df_spending, index = ['brand_name', 
                                                                   'generic_name'],
                                        values = ['total_spending', 
                                                  'total_dosage_units', 
                                                  'total_claims', 
                                                  'total_beneficiaries'],
                                        aggfunc = np.sum)
-    df_spending_brand_min = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+    df_spending_brand_min = pd.pivot_table(df_spending, index = ['brand_name', 
                                                                   'generic_name'],
                                        values = ['average_spending_per_dosage_unit'],
                                        aggfunc = min).reset_index()
-    df_spending_brand_max = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+    df_spending_brand_max = pd.pivot_table(df_spending, index = ['brand_name', 
                                                                   'generic_name'],
                                        values = ['average_spending_per_dosage_unit',
                                                  'manufacturer'],
@@ -111,15 +113,17 @@ def merge_spending_df_and_ad_df(df_spending_2014, df_piv_adv_2014_brand):
     df_merge_2014['serious_per_bene'] = 100*(df_merge_2014['serious_count']/df_merge_2014['total_beneficiaries'])
     return df_merge_2014
 
-def merge_spending_df_tot_and_ad_df(df_spending_2014, df_piv_adv_2014_brand):
-    df_spending_brand = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+
+def merge_spending_df_tot_and_ad_df(df_spending, df_piv_adv_2014_brand):
+    """ Merge the CMS total spending df with the adverse events df """
+    df_spending_brand = pd.pivot_table(df_spending, index = ['brand_name', 
                                                                   'generic_name'],
                                        values = ['total_spending', 
                                                  'total_dosage_units', 
                                                  'total_claims', 
                                                  'total_beneficiaries'],
                                        aggfunc = np.sum)
-    df_spending_brand_mean = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+    df_spending_brand_mean = pd.pivot_table(df_spending, index = ['brand_name', 
                                                                   'generic_name'],
                                        values = ['percent_change_spending', 
                                                  'percent_change_dosage', 
@@ -131,11 +135,11 @@ def merge_spending_df_tot_and_ad_df(df_spending_2014, df_piv_adv_2014_brand):
                                                 left_index=True,
                                                 right_index=True,
                                                 how='inner')
-    df_spending_brand_min = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+    df_spending_brand_min = pd.pivot_table(df_spending, index = ['brand_name', 
                                                                   'generic_name'],
                                        values = ['current_avg_spending_per_dose'],
                                        aggfunc = min).reset_index()
-    df_spending_brand_max = pd.pivot_table(df_spending_2014, index = ['brand_name', 
+    df_spending_brand_max = pd.pivot_table(df_spending, index = ['brand_name', 
                                                                   'generic_name'],
                                        values = ['current_avg_spending_per_dose'],
                                        aggfunc = max).reset_index()
@@ -150,8 +154,9 @@ def merge_spending_df_tot_and_ad_df(df_spending_2014, df_piv_adv_2014_brand):
     df_merge_2014['serious_per_bene'] = 100*(df_merge_2014['serious_count']/df_merge_2014['total_beneficiaries'])
     return df_merge_2014
 
+
 def label_brand_generic(df):
-    # If no adverse events reported, assume 
+    """ Correct the formatting of the brand and generic drug names """
     df = df.reset_index(drop=True)
     df = df.drop(['drug_brand_name', 'drug_generic_name'], axis=1)
     df['generic_compare'] = df['generic_name'].str.replace('-', ' ')
@@ -191,8 +196,10 @@ def label_brand_generic(df):
     df = df.merge(df_class_generic_count, right_index=True, left_on = 'generic_name', how='inner')
     return df
 
+
 def feature_and_generic_label(df):  
-    
+    """ Find the appropriate means or min/max range for each drug type for 
+    feature engineering """"
     df_piv_merge_generic_risk = pd.pivot_table(df, index = ['generic_name',
                                                                'risk_class'],
         values = ['serious_count', 'total_beneficiaries', 'total_claims',
@@ -220,7 +227,9 @@ def feature_and_generic_label(df):
 
     return df_piv_merge_generic_risk
 
+
 def find_num_manuf_and_change(df_spending_pre, df_spending_post):
+    """ Associating a total # of manufactuters and increase over the year for each drug """
     df_spending_2manuf_pre = pd.pivot_table(df_spending_pre, index = 'generic_name',
                                          values = 'total_spending',
                                          aggfunc = 'count')
@@ -232,7 +241,9 @@ def find_num_manuf_and_change(df_spending_pre, df_spending_post):
     df_manufacturer['total_manuf'] = df_spending_2manuf_post['total_spending']
     return df_manufacturer
 
+
 def find_spending_change(df_spending_pre, df_spending_post):
+    """Find the relative changes in spending over the years --> used as features """
     series_diff_spending = (df_spending_post[['total_spending']] - df_spending_pre[['total_spending']])/df_spending_pre[['total_spending']]
     series_diff_dosage = (df_spending_post[['total_dosage_units']] - df_spending_pre[['total_dosage_units']])/df_spending_pre[['total_dosage_units']]
     series_diff_claims = (df_spending_post[['total_claims']] - df_spending_pre[['total_claims']])/df_spending_pre[['total_claims']]
@@ -254,8 +265,9 @@ def find_spending_change(df_spending_pre, df_spending_post):
                                       'percent_change_avg_spending_per_dose']
     return df_spending_difference
 
+
 def merge_spending_diff(df_spending_current, df_spending_2013, df_spending_difference):
-    # Merge spending by brand and adverse events
+    """ Merge spending by brand and adverse events """
     df_spending_2013 = df_spending_2013.drop(['average_spending_per_claim', 
                                               'average_spending_per_beneficiary',
                                               'manufacturer'], axis=1)
@@ -267,8 +279,9 @@ def merge_spending_diff(df_spending_current, df_spending_2013, df_spending_diffe
     df_spending_tot['current_avg_spending_per_dose'] = df_spending_current['current_avg_spending_per_dose']
     return df_spending_tot
 
-########## CLASSIFICATION ##########
+
 def classify_generic_risk(df_piv_merge_generic_risk):   
+    """ Find the risk response variable using a chi sq test for each drug """
     df_piv_merge_generic_risk = df_piv_merge_generic_risk.sort_values(by='generic_name')
     p_val_chi_sq = []
     chi_sq_val = []

@@ -8,9 +8,13 @@ Created on Thu Oct  4 16:20:12 2018
 import psycopg2
 import pandas as pd
 
+
 from functions_adverse_drug_events import (merge_ad_ev_tables_serious, 
                                            merge_2_me_tables_serious)
 from functions_data_cleaning import clean_ad_ev_table
+
+
+
 
 def load_ad_ev_df(year_list):
     dict_df_ad = create_ad_ev_df(year_list)
@@ -41,6 +45,7 @@ def load_ad_ev_df(year_list):
                                               df_ad_2014_q3, df_ad_2014_q4) 
             dict_df_clean_ad['df_ad_clean'] = df_ad_clean
     return dict_df_clean_ad
+
 
 def create_ad_ev_df(year_list):
     """ load in adverse event reports from postgres sql database """
@@ -75,6 +80,7 @@ def create_ad_ev_df(year_list):
             dict_df_ad[year] = dict_ad_2014
     return dict_df_ad
 
+
 def query_table_ad_ev(table_name):
     """ query database to get serious ad ev drug counts """
     dbname = 'fda_adverse_events'
@@ -93,6 +99,7 @@ def query_table_ad_ev(table_name):
     sql_query_w_table = sql_query % (table_name)
     df = pd.read_sql_query(sql_query_w_table,con)
     return df
+
 
 def merge_ad_df(df_q1, df_q2, df_q3, df_q4):
     """ merge the ad ev dataframes by drug generic name and drug brand name and

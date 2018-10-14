@@ -6,17 +6,16 @@ Created on Wed Sep 12 17:13:29 2018
 @author: pamelaanderson
 """
 from difflib import SequenceMatcher
-import numpy as np
-import pandas as pd
-import os
 import json
+import numpy as np
+import os
 import operator
+import pandas as pd
 
-path = '/Users/pamelaanderson/Documents/Insight/fda_drug_recall/'
-year = '2012'
-q = 'Q4'
+
 
 def load_adverse_events(path, year, q):
+    """ Loading adverse drug events while performing basic pre-processing"""
     path_w_year = path + year + '/' + q + '/'
     json_files = os.listdir(path_w_year)
     df_adverse_ev = pd.DataFrame()
@@ -25,21 +24,28 @@ def load_adverse_events(path, year, q):
     for file in file_tot:
         print(file)
         adverse_ev_data = json.load(open(path_w_year + file))
-        #df_adverse_ev_json = pd.read_json(path_w_year + file, lines=True, chunksize=10000)
         df_adverse_ev_json = pd.DataFrame(adverse_ev_data['results'])
         df_adverse_ev = pd.concat([df_adverse_ev, df_adverse_ev_json])
         del adverse_ev_data, df_adverse_ev_json
         ind += 1
     df_adverse_ev = df_adverse_ev.reset_index(drop=True)
+    # Change data types to correct format
     df_adverse_ev = format_kept_cells(df_adverse_ev)
+    # Find drug application number from nested dictionary
     df_adverse_ev = extract_drug_app_num_from_ad_ev(df_adverse_ev)
+    # Find patient features from nested dictionary
     df_adverse_ev = extract_patient_features(df_adverse_ev)
+    # Find drug info from nested dictionary
     df_adverse_ev = extract_drug_features(df_adverse_ev)
+    # Find who submitted report info as column in df
     df_adverse_ev = extract_source_info(df_adverse_ev)
+    # Drop columns that will not be included as features
     df_adverse_ev = drop_unneeded_cols(df_adverse_ev)
     return df_adverse_ev
 
+
 def drop_unneeded_cols(df_adverse_ev):
+    """ Drop the columns that will not be used as features """
     drop_cols = ['companynumb','duplicate', 'occurcountry',
                  'patient', 
                  'primarysourcecountry', 'receiptdateformat',
@@ -51,6 +57,7 @@ def drop_unneeded_cols(df_adverse_ev):
     return df_adverse_ev
 
 def format_kept_cells(df_adverse_ev):
+    """ Correct data types (to numeric or datetime) """
     df_adverse_ev['fulfillexpeditecriteria'] = pd.to_numeric(df_adverse_ev['fulfillexpeditecriteria'])
     df_adverse_ev['serious'] = pd.to_numeric(df_adverse_ev['serious'])
     df_adverse_ev['seriousnesscongenitalanomali'] = pd.to_numeric(df_adverse_ev['seriousnesscongenitalanomali'])
@@ -70,7 +77,9 @@ def format_kept_cells(df_adverse_ev):
     df_adverse_ev[cols_to_convert_na_to_0] = df_adverse_ev[ cols_to_convert_na_to_0 ].fillna(value=0)
     return df_adverse_ev
 
+
 def extract_drug_features(df_adverse_ev):
+    """ Find the relevant information about the drugs """
     medic_product = []
     drug_indict = []
     drug_route = []
@@ -101,6 +110,7 @@ def extract_drug_features(df_adverse_ev):
     return df_adverse_ev
 
 def extract_source_info(df_adverse_ev):
+    """ Find information about who submitted the report """
     qual_list = []
     for i in range(0,len(df_adverse_ev)):
         if df_adverse_ev.iloc[i]['primarysource'] is not None:
@@ -115,7 +125,9 @@ def extract_source_info(df_adverse_ev):
     df_adverse_ev = df_adverse_ev.drop(['primarysource'], axis=1)
     return df_adverse_ev
     
+
 def extract_patient_features(df_adverse_ev):
+    """ Find information about the patient with the ADR """
     patient_sex = []
     patient_age = []
     patient_reaction = []
@@ -152,7 +164,9 @@ def extract_patient_features(df_adverse_ev):
     df_adverse_ev = pd.concat([df_adverse_ev, patient_info], axis= 1)
     return df_adverse_ev
 
+
 def extract_drug_app_num_from_ad_ev(df_adverse_ev):
+    """ Find the brand name, generic name, and manuf name for each drug """
     drug_app_num = []
     drug_brand_name = []
     drug_generic_name = []
@@ -189,7 +203,9 @@ def extract_drug_app_num_from_ad_ev(df_adverse_ev):
     df_adverse_ev = pd.concat([df_adverse_ev, drug_info], axis=1)
     return df_adverse_ev
 
+
 def extract_drug_app_num_from_recall(df_recall_w_openfda):
+    """ Find drug application number """
     drug_app_num = []
     for i in range(0,len(df_recall_w_openfda)):
         col_names = list(df_recall_w_openfda.iloc[i]['openfda'])
@@ -199,6 +215,7 @@ def extract_drug_app_num_from_recall(df_recall_w_openfda):
             drug_app_num.append(np.nan)
     return drug_app_num    
 
+
 def create_ad_ev_pivot_on_drug_num(df_adverse_ev):
     df_ad_ev_drug_num = pd.pivot_table(df_adverse_ev, index = ['drug_generic_name',
                                                                'drug_brand_name',
@@ -206,7 +223,9 @@ def create_ad_ev_pivot_on_drug_num(df_adverse_ev):
     df_ad_ev_drug_num = df_ad_ev_drug_num.reset_index()
     return df_ad_ev_drug_num
 
+
 def merge_ad_ev_tables(df_ad_data_q1, df_ad_data_q2):
+    """ Merge adverse event df from different quarters together """
     cols_drop_indiv = ['seriousnesscongenitalanomali_count',
                  'seriousnessdeath_count',
                  'seriousnessdisabling_count',
@@ -241,7 +260,9 @@ def merge_ad_ev_tables(df_ad_data_q1, df_ad_data_q2):
     df_ad_data_merge = df_ad_data_merge.drop(cols_drop, axis=1)
     return df_ad_data_merge
 
+
 def merge_ad_ev_tables_serious(df_ad_data_q1, df_ad_data_q2):
+    """ Merge two ad events df and sum the serious events """
     cols_drop = ['serious_count_x',
                  'serious_count_y',
                  'drug_generic_name_x',
@@ -267,7 +288,9 @@ def merge_ad_ev_tables_serious(df_ad_data_q1, df_ad_data_q2):
     df_ad_data_merge = df_ad_data_merge.drop(cols_drop, axis=1)
     return df_ad_data_merge
 
+
 def merge_2_me_tables_serious(df_ad_data_merge_1, df_ad_data_merge_2):
+    """ Merge the two complete adverse event data frames """
     cols_drop = ['serious_count_x',
                  'serious_count_y',
                  'drug_generic_name_x',
@@ -294,7 +317,9 @@ def merge_2_me_tables_serious(df_ad_data_merge_1, df_ad_data_merge_2):
     df_ad_data_merge = df_ad_data_merge.drop(cols_drop, axis=1)
     return df_ad_data_merge
 
+
 def classify_ad_event_recall(df_ad_ev_drug_num, df_recall):
+    """ Classify the adverse event data corresponding to drug recall"""
     df_ad_ev_drug_num = df_ad_ev_drug_num.fillna('MISSING')
     df_ad_ev_drug_num['drug_generic_name'] = df_ad_ev_drug_num['drug_generic_name'].str.lower()
     df_ad_ev_drug_num['drug_brand_name'] = df_ad_ev_drug_num['drug_brand_name'].str.lower()
@@ -339,8 +364,19 @@ def classify_ad_event_recall(df_ad_ev_drug_num, df_recall):
                                    'recall_report_date' : recall_report_date_list})
     df_ad_ev_drug_num = pd.concat([df_ad_ev_drug_num, df_recall_info], axis=1)
     
-
     
 def save_raw_data(df_adverse_ev):
+    """ Pickle the adverse event dataframe to save and load later"""
     df_adverse_ev.to_pickle("/Users/pamelaanderson/Documents/Insight/fda_drug_recall/dataframes/df_adverse_ev_2014_q1.pkl")
+    ## Data to pickle
+    #df_merge_ad_spending_label_save = df_merge_ad_spending_label
+    #df_merge_ad_spending_label_save = df_merge_ad_spending_label_save.drop(warfarin_drop)
+    df_merge_ad_spending_label_save.to_pickle('./data/df_merge_ad_spending.pkl')
     
+    
+    df_merge_classify_final = df_merge_classify_final.drop([0,1])
+    df_merge_classify_final.to_pickle('./data/df_merge_classify_final.pkl')
+    
+    
+    df_patient_react = df_serious_clean_brand
+    df_serious_clean_brand.to_pickle('./df_patient_react.pkl')

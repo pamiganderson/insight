@@ -8,6 +8,8 @@ Created on Wed Sep 26 15:54:44 2018
 import numpy as np
 import pandas as pd
 
+
+
 def find_nti_drugs(df_merge_class):
     """ Determine if drugs are narrow therapeutic index """
     nti_list = ['carbamazepine',
@@ -29,6 +31,7 @@ def find_nti_drugs(df_merge_class):
             nti_risk.append(0)
     df_merge_class['nti_index'] = pd.Series(nti_risk, index=df_merge_class.index.values)
     return df_merge_class
+
 
 def find_num_act_ingredients(df_merge_class):
     """ Find the number of active ingredients in drugs """

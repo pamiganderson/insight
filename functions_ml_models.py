@@ -45,7 +45,9 @@ from sklearn.metrics import precision_score
 from imblearn.over_sampling import SMOTE, ADASYN
 
 
+
 def compare_classifiers(df_features, resp_var):
+    """ Compare different classification models --> no hyperparameter optimization"""
     # import plotting to visualize results from different models
     old_settings = np.seterr(all='ignore') 
 
@@ -92,12 +94,10 @@ def compare_classifiers(df_features, resp_var):
     ax.set_xticklabels(names)
     ax.set_ylabel('P-R AUC')
     plt.show()
-
-#    return results_plot
-
+    
 
 def random_forest_model(df_features, resp_var):
-        
+    """ Utilize a random forest model """    
     roc_dict = {}
     roc_list = []
     recall_list = []
@@ -167,8 +167,9 @@ def random_forest_model(df_features, resp_var):
         
     return dict_results
 
-def xgboost_model():
 
+def xgboost_model():
+    """ Utilize a XGBoost model """
     # To prevent XG boost error    
     import os
     os.environ['KMP_DUPLICATE_LIB_OK']='True'
@@ -211,13 +212,8 @@ def xgboost_model():
     confusion_matrix(y_test, y_pred)
 
     
-#    model.fit(X_train, y_train)
-#    y_pred = model.predict(X_test)
-#    class_report = classification_report(y_test, y_pred)
-#    confusion_matrix(y_test, y_pred)
-
-    
 def plot_roc_curve(classifier, X, y):
+    """ Function to plot an ROC curve knowing the features, resp and model """
     from sklearn.metrics import roc_curve, auc
     from sklearn.model_selection import StratifiedKFold
     from scipy import interp
@@ -269,8 +265,9 @@ def plot_roc_curve(classifier, X, y):
     plt.legend(loc="lower right")
     plt.show()
     
-def plot_precision_recall(classifier, X_test, y_test, y_score):
     
+def plot_precision_recall(classifier, X_test, y_test, y_score):
+    """ Function to plot an precision-recall curve knowing the features, resp and model """
     from sklearn.metrics import precision_recall_curve
     import matplotlib.pyplot as plt
     from sklearn.utils.fixes import signature
@@ -302,7 +299,9 @@ def plot_precision_recall(classifier, X_test, y_test, y_score):
     plt.title('Precision-Recall curve: AP={0:0.2f}'.format(
               average_precision))
     
+    
 def rf_regressor(X, y):
+    """ Function to perform a random forest regressor model on data """"
     # Import the model we are using
     from sklearn.ensemble import RandomForestRegressor
     # Instantiate model with 1000 decision trees
@@ -315,8 +314,6 @@ def rf_regressor(X, y):
                                                         test_size = 0.3,
                                                         random_state = seed)
 
-#    sm = SMOTE(random_state=12, ratio = 1.0)
-#    x_train_res, y_train_res = sm.fit_sample(X_train, y_train)
     # Train the model on training data
     rf.fit(X_train, y_train)
 
@@ -330,13 +327,6 @@ def rf_regressor(X, y):
     plt.xlabel('Test Set Chi Sq')
     plt.ylabel('Predicted Chi Sq')
     plt.title('Random Forest Regressor on Chi Sq Stat')
-    
-#    bin_vals = np.linspace(0,10000,1000)
-#    plt.figure()
-#    plt.hist(y['chi_sq_val'], bins=bin_vals)
-#    plt.xlabel('Chi Sq Test Stat')
-#    plt.ylabel('Count')
-#    plt.title('Distribution of Chi Sq Test Statistic')
 
     # Print out the mean absolute error (mae)
     print('Mean Absolute Error:', round(np.mean(errors), 2), 'degrees.')

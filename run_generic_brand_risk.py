@@ -118,8 +118,6 @@ df_merge_class = df_merge_class.fillna(0)
 p = np.isinf(df_merge_class).any()
 df_merge_class['percent_change_avg_spending_per_dose'][np.isinf(df_merge_class['percent_change_avg_spending_per_dose'])] = 0
 df_merge_class_2 = df_merge_class[(df_merge_class['risk_class'] == 0)]
-df_merge_class_d = df_merge_class[(df_merge_class['total_beneficiaries'] > 100)]
-
 
 # Create Model
 results_plot = compare_classifiers(df_merge_class_2[['total_beneficiaries', 'total_claims',
@@ -152,49 +150,6 @@ resp_var = df_merge_class[['classify_risk']]
 random_forest_model()
 
 # Excluding these features:
-# 'total_claim_range','total_dosage_range',
 # Examining the data
 p = df_merge_ad_spending[['brand_name', 'generic_name', 'total_beneficiaries',
                           'serious_count', 'serious_per_bene']]
-
-
-# Important features
-
-
-# Chi sq test - contingency tables
-from scipy.stats import chi2_contingency
-obs = np.array([[60, 293329], [65, 65]])
-chi2, p, dof, expected = chi2_contingency(obs)
-
-
-# 
-df_merge_classify_final = df_merge_class.reset_index()
-df_merge_classify_final.rename(columns={'index': 'generic_name'}, inplace=True)
-
-amiodarone_drop = [594]
-warfarin_drop = [1304]
-
-## Data to pickle
-#df_merge_ad_spending_label_save = df_merge_ad_spending_label
-#df_merge_ad_spending_label_save = df_merge_ad_spending_label_save.drop(warfarin_drop)
-df_merge_ad_spending_label_save.to_pickle('./data/df_merge_ad_spending.pkl')
-
-
-df_merge_classify_final = df_merge_classify_final.drop([0,1])
-df_merge_classify_final.to_pickle('./data/df_merge_classify_final.pkl')
-
-
-df_patient_react = df_serious_clean_brand
-df_serious_clean_brand.to_pickle('./df_patient_react.pkl')
-
-
-#price_incr_decr = df_merge_class['diff_avg_spending_per_dose']
-#price_incr_decr[price_incr_decr < 0] = 0
-#price_incr_decr[price_incr_decr > 0] = 1
-#df_merge_class['price_change'] = price_incr_decr
-
-#manuf = df_manuf_per_generic.copy()
-#incre_manuf = manuf['increase_manuf']
-#incre_manuf[incre_manuf < 0] = 0
-#incre_manuf[incre_manuf > 0] = 1
-#df_merge_class_t['increase_manuf'] = df_merge_class_t['increase_manuf']
